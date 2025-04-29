@@ -79,6 +79,9 @@ public class CafeRoom extends AbstractEvent {
     }
 
     private static boolean canSpawn(Class<? extends AbstractCafeInteractable> clz) {
+        if (!Anniv7Mod.getFilterConfig(clz.getSimpleName())) {
+            return false;
+        }
         Method canSpawnMethod = null;
         if (canSpawnMethods.containsKey(clz)) {
             canSpawnMethod = canSpawnMethods.get(clz);

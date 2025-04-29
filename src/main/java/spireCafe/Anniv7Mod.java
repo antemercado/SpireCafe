@@ -2,14 +2,19 @@ package spireCafe;
 
 import basemod.AutoAdd;
 import basemod.BaseMod;
+import basemod.IUIElement;
 import basemod.ModPanel;
 import basemod.abstracts.CustomSavable;
 import basemod.devcommands.ConsoleCommand;
 import basemod.helpers.RelicType;
 import basemod.interfaces.*;
+import basemod.patches.com.megacrit.cardcrawl.helpers.TipHelper.HeaderlessTip;
+import basemod.patches.com.megacrit.cardcrawl.screens.options.DropdownMenu.DropdownColoring;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.evacipated.cardcrawl.mod.stslib.Keyword;
 import com.evacipated.cardcrawl.modthespire.Loader;
 import com.evacipated.cardcrawl.modthespire.lib.SpireConfig;
@@ -21,6 +26,7 @@ import com.megacrit.cardcrawl.dungeons.AbstractDungeon;
 import com.megacrit.cardcrawl.helpers.FontHelper;
 import com.megacrit.cardcrawl.localization.*;
 import com.megacrit.cardcrawl.potions.AbstractPotion;
+import com.megacrit.cardcrawl.screens.options.DropdownMenu;
 import com.megacrit.cardcrawl.unlock.UnlockTracker;
 import imgui.ImGui;
 import imgui.type.ImFloat;
@@ -466,12 +472,21 @@ public class Anniv7Mod implements
 
     private ModPanel settingsPanel;
 
+    private DropdownMenu filterDropdown;
+
+    private String filterViewedInteractable;
+
     private static final float ENTRYCOST_CHECKBOX_X = 400f;
     private static final float ENTRYCOST_CHECKBOX_Y = 685f;
     private static final float SHADERS_CHECKBOX_SERIES_X = 400f;
-    private static final float SHADERS_CHECKBOX_Y = 600f;
+    private static final float SHADERS_CHECKBOX_Y = 650f;
+    private static final float DROPDOWN_X = 400f;
+    private static final float DROPDOWN_Y = 600f;
+    private static final float CHECKBOX_X = 400f;
+    private static final float CHECKBOX_Y = 520f;
 
-
+    private FixedModLabeledToggleButton filterCheckbox;
+    
     private void initializeConfig() {
         UIStrings configStrings = CardCrawlGame.languagePack.getUIString(makeID("ConfigMenuText"));
 
@@ -488,9 +503,84 @@ public class Anniv7Mod implements
                 (button) -> setDisableShadersConfig(button.enabled));
         settingsPanel.addUIElement(disableShaders);
 
+        ArrayList<String> filterOptions = new ArrayList<>();
+        for (String i : unfilteredAllInteractableIDs) {
+            filterOptions.add(i);
+        }
+
+        filterDropdown = new DropdownMenu((dropdownMenu, index, s) -> filterSetViewedInteractable(index),
+            filterOptions, FontHelper.tipBodyFont, Settings.CREAM_COLOR);
+            DropdownColoring.RowToColor.function.set(filterDropdown, (index) -> getFilterConfig(unfilteredAllInteractableIDs.get(index)) ? null : Settings.RED_TEXT_COLOR);
+        IUIElement wrapperDropdown = new IUIElement() {
+            public void render(SpriteBatch sb) {
+                filterDropdown.render(sb, DROPDOWN_X * Settings.xScale,DROPDOWN_Y * Settings.yScale);
+            }
+            public void update() {
+                filterDropdown.update();
+            }
+            public int renderLayer() {return 3;}
+            public int updateOrder() {return 0;}
+        };
+
+        settingsPanel.addUIElement(wrapperDropdown);
+
+        filterCheckbox = new FixedModLabeledToggleButton(configStrings.TEXT[5], CHECKBOX_X, CHECKBOX_Y, Color.WHITE,
+            FontHelper.tipBodyFont, true, null, (label) -> {},
+            (button) -> setFilterConfig(filterViewedInteractable, button.enabled));
+        IUIElement wrapperFilterCheckbox = new IUIElement() {
+            @Override
+            public void render(SpriteBatch sb) {
+                filterCheckbox.render(sb);
+            }
+
+            @Override
+            public void update() {
+                if (!filterDropdown.isOpen) {
+                    filterCheckbox.update();
+                }
+            }
+
+            @Override
+            public int renderLayer() {
+                return filterCheckbox.renderLayer();
+            }
+
+            @Override
+            public int updateOrder() {
+                return 1;
+            }
+        };
+
+        settingsPanel.addUIElement(filterCheckbox);
 
         BaseMod.registerModBadge(badge, configStrings.TEXT[0], configStrings.TEXT[1], configStrings.TEXT[2], settingsPanel);
     }
+
+    private void filterSetViewedInteractable(int index) {
+        filterViewedInteractable = unfilteredAllInteractableIDs.get(index);
+        filterCheckbox.toggle.enabled = getFilterConfig(filterViewedInteractable);
+    }
+
+
+    public static boolean getFilterConfig(String interactableID) {
+        if (modConfig != null && modConfig.has(interactableID +"_ENABLED")) {
+            return modConfig.getBool(interactableID +"_ENABLED");
+        } else {
+            return true;
+        }
+    }
+
+    private static void setFilterConfig(String interactableID, boolean enable) {
+        if (modConfig != null) {
+            modConfig.setBool(interactableID +"_ENABLED", enable);
+            try {
+                modConfig.save();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
 
     public static boolean getCafeEntryCostConfig() {
         return modConfig != null && modConfig.getBool("cafeEntryCost");

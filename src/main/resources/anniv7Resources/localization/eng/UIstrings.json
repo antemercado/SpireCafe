@@ -5,7 +5,8 @@
       "StS Modding Community",
       "Adds a cozy café at the end of acts 1 and 2.",
       "Entering the Café costs HP.",
-      "Disable shaders."
+      "Disable shaders.",
+      "Enabled"
     ]
   },
   "${ModID}:CafeUI": {
