@@ -34,6 +34,9 @@ import javassist.CtClass;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import spireCafe.abstracts.AbstractAttraction;
+import spireCafe.abstracts.AbstractBartender;
 import spireCafe.abstracts.AbstractCafeInteractable;
 import spireCafe.abstracts.AbstractCutscene;
 import spireCafe.abstracts.AbstractSCRelic;
@@ -702,6 +705,29 @@ public class Anniv7Mod implements
         public void onLoad(HashSet<String> s) {
             currentRunSeenInteractables = s == null ? new HashSet<>() : s;
         }
+    }
+
+    public static void clearCurrentRunSeenInteractables(Class<? extends AbstractCafeInteractable> clz) {
+        ArrayList<String> toRemove = getInteractableClassIDs(clz);
+        for (String i : toRemove){
+            currentRunSeenInteractables.remove(i);
+        }
+    }
+
+    private static ArrayList<String> getInteractableClassIDs(Class<? extends AbstractCafeInteractable> clz) {
+        List<Class<? extends AbstractCafeInteractable>> classes = getInteractableClassesByType(clz);
+        ArrayList<String> ret = new ArrayList<>();
+        for (Class<? extends AbstractCafeInteractable> i : classes) {
+            ret.add(i.getSimpleName());
+        }
+        return ret;
+    }
+
+    private static List<Class<? extends AbstractCafeInteractable>> getInteractableClassesByType(Class<? extends AbstractCafeInteractable> clz) {
+        return Anniv7Mod.interactableClasses.entrySet().stream()
+                .filter(entry -> clz.isAssignableFrom(entry.getValue()))
+                .map(Map.Entry::getValue)
+                .collect(Collectors.toList());
     }
 
 }

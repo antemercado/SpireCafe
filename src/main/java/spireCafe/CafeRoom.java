@@ -129,11 +129,20 @@ public class CafeRoom extends AbstractEvent {
 
         // To prevent running out of interactables on endless, if any of the possible lists are empty or the amount of
         // patrons/attractions isn't enough, clear the list of seen interactable and try again
-        if (possibleBartenders.isEmpty() || possibleMerchants.isEmpty() || possiblePatrons.size() < NUM_PATRONS || possibleAttractions.isEmpty()) {
-            Anniv7Mod.currentRunSeenInteractables.clear();
+        if (possibleBartenders.isEmpty()) {
+            Anniv7Mod.clearCurrentRunSeenInteractables(AbstractBartender.class);
             possibleBartenders = getPossibilities(AbstractBartender.class);
+        }
+        if (possibleMerchants.isEmpty()) {
+            Anniv7Mod.clearCurrentRunSeenInteractables(AbstractMerchant.class);
             possibleMerchants = getPossibilities(AbstractMerchant.class);
+        }
+        if (possiblePatrons.size() < NUM_PATRONS) {
+            Anniv7Mod.clearCurrentRunSeenInteractables(AbstractPatron.class);
             possiblePatrons = getPossibilities(AbstractPatron.class);
+        }
+        if (possibleAttractions.isEmpty()) {
+            Anniv7Mod.clearCurrentRunSeenInteractables(AbstractAttraction.class);
             possibleAttractions = getPossibilities(AbstractAttraction.class);
         }
 
