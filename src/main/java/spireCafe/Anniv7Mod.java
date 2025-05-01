@@ -36,6 +36,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import spireCafe.abstracts.AbstractAttraction;
+import spireCafe.abstracts.AbstractAttractionSettings;
 import spireCafe.abstracts.AbstractBartender;
 import spireCafe.abstracts.AbstractCafeInteractable;
 import spireCafe.abstracts.AbstractCutscene;
@@ -44,6 +45,8 @@ import spireCafe.cardvars.SecondDamage;
 import spireCafe.cardvars.SecondMagicNumber;
 import spireCafe.interactables.attractions.jukebox.JukeboxRelic;
 import spireCafe.interactables.attractions.makeup.MakeupTableAttraction;
+import spireCafe.interactables.attractions.punchingbag.PunchingBagAttraction;
+import spireCafe.interactables.attractions.punchingbag.PunchingBagSettings;
 import spireCafe.interactables.merchants.fleamerchant.FleaMerchant;
 import spireCafe.interactables.patrons.dandadan.RightBallPotionSavable;
 import spireCafe.interactables.patrons.dandadan.RightballPotion;
@@ -67,6 +70,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -475,9 +479,22 @@ public class Anniv7Mod implements
 
     private ModPanel settingsPanel;
 
+    
+    private void loadAttractionSettings() {
+        attractionSettings.put(PunchingBagAttraction.class.getSimpleName(), new PunchingBagSettings());
+
+        for (Entry<String, AbstractAttractionSettings> setting : attractionSettings.entrySet()) {
+            ArrayList<IUIElement> elements = setting.getValue().getElements();
+            for (IUIElement e : elements) {
+                settingsPanel.addUIElement(e);
+            }
+        }
+    }
+
     private DropdownMenu filterDropdown;
 
     private String filterViewedInteractable;
+    private AbstractAttractionSettings filterViewedAttractionSetting = null;
 
     private static final float ENTRYCOST_CHECKBOX_X = 400f;
     private static final float ENTRYCOST_CHECKBOX_Y = 685f;
@@ -489,13 +506,18 @@ public class Anniv7Mod implements
     private static final float CHECKBOX_Y = 520f;
 
     private FixedModLabeledToggleButton filterCheckbox;
+
+    private HashMap<String, AbstractAttractionSettings> attractionSettings = new HashMap<>();
     
     private void initializeConfig() {
         UIStrings configStrings = CardCrawlGame.languagePack.getUIString(makeID("ConfigMenuText"));
-
+        
         Texture badge = TexLoader.getTexture(makeImagePath("ui/badge.png"));
-
+        
         settingsPanel = new ModPanel();
+
+        loadAttractionSettings();
+
         FixedModLabeledToggleButton cafeEntryCostToggle = new FixedModLabeledToggleButton(configStrings.TEXT[3], ENTRYCOST_CHECKBOX_X, ENTRYCOST_CHECKBOX_Y, Color.WHITE, FontHelper.tipBodyFont, getCafeEntryCostConfig(), null,
                 (label) -> {},
                 (button) -> setCafeEntryCostConfig(button.enabled));
@@ -554,7 +576,7 @@ public class Anniv7Mod implements
             }
         };
 
-        settingsPanel.addUIElement(filterCheckbox);
+        settingsPanel.addUIElement(wrapperFilterCheckbox);
 
         BaseMod.registerModBadge(badge, configStrings.TEXT[0], configStrings.TEXT[1], configStrings.TEXT[2], settingsPanel);
     }
@@ -562,6 +584,13 @@ public class Anniv7Mod implements
     private void filterSetViewedInteractable(int index) {
         filterViewedInteractable = unfilteredAllInteractableIDs.get(index);
         filterCheckbox.toggle.enabled = getFilterConfig(filterViewedInteractable);
+        if (filterViewedAttractionSetting != null){
+            filterViewedAttractionSetting.disable();
+        }
+        filterViewedAttractionSetting = attractionSettings.get(filterViewedInteractable);
+        if (filterViewedAttractionSetting != null) {
+            filterViewedAttractionSetting.enable();
+        }
     }
 
 

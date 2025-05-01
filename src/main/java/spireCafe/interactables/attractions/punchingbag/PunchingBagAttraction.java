@@ -219,7 +219,7 @@ public class PunchingBagAttraction extends AbstractAttraction{
         return slashFX[MathUtils.random(slashFX.length - 1)];
     }
 
-    private void saveHiScore(int score) {
+    public static void saveHiScore(int score) {
         try {
             Anniv7Mod.modConfig.setInt(PunchingBagAttraction.class.getSimpleName() + "/hiscore", score);
             Anniv7Mod.modConfig.save();
@@ -228,13 +228,12 @@ public class PunchingBagAttraction extends AbstractAttraction{
         }
     }
 
-    private int loadHiScore() {
+    public static int loadHiScore() {
         try {
             Anniv7Mod.modConfig.load();
             return Anniv7Mod.modConfig.getInt(PunchingBagAttraction.class.getSimpleName() + "/hiscore");
         } catch (Exception e) {
-            saveHiScore(hiScore);
-            return hiScore;
+            return 0;
         }
     }
 }
