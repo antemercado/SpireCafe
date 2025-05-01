@@ -6,7 +6,8 @@
       "Adds a cozy café at the end of acts 1 and 2.",
       "Entering the Café costs HP.",
       "Disable shaders.",
-      "Enabled"
+      "Enabled",
+      "Percent HP Cost to enter the Café: "
     ]
   },
   "${ModID}:CafeUI": {
@@ -23,6 +24,11 @@
   "${ModID}:Missingno": {
     "TEXT": [
       "The Missingno"
+    ]
+  },
+  "${ModID}:PunchingBagSettings": {
+    "TEXT": [
+      "Reset High Score"
     ]
   }
 }

@@ -198,14 +198,18 @@ public class CafeEntryExitPatch {
         // (see DisableNormalEndOfActHealingPatch) and replicate the logic, with a multiplier to apply the cafe entry cost
         // If the net change is positive, we apply it in a single heal. If the net change is negative, we directly modify
         // the player's current health (bypassing anything that might modify healing, damage, or HP loss).
-        float entryCostMultiplier = Anniv7Mod.getCafeEntryCostConfig() ? (100 - HP_COST_PERCENT) / 100.0f : 1.0f;
+        float entryCostMultiplier = Anniv7Mod.getCafeEntryCostConfig() ? (100 - Anniv7Mod.getCafeEntryPercentConfig()) / 100.0f : 1.0f;
         float normalHealAmount = (AbstractDungeon.ascensionLevel >= 5 ? 0.75f : 1.0f) * (AbstractDungeon.player.maxHealth - AbstractDungeon.player.currentHealth);
         int healthChange = (int)((entryCostMultiplier * (AbstractDungeon.player.currentHealth + normalHealAmount)) - AbstractDungeon.player.currentHealth);
         if (healthChange > 0) {
             AbstractDungeon.player.heal(healthChange);
         }
         else {
-            AbstractDungeon.player.currentHealth += healthChange;
+            if (AbstractDungeon.player.currentHealth + healthChange <= 0){
+                AbstractDungeon.player.currentHealth = 1;
+            } else {
+                AbstractDungeon.player.currentHealth += healthChange;
+            }
             AbstractDungeon.effectList.add(new StrikeEffect(AbstractDungeon.player, AbstractDungeon.player.hb.cX, AbstractDungeon.player.hb.cY, -healthChange));
         }
     }

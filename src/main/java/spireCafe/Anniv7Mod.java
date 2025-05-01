@@ -4,6 +4,7 @@ import basemod.AutoAdd;
 import basemod.BaseMod;
 import basemod.IUIElement;
 import basemod.ModPanel;
+import basemod.ModSlider;
 import basemod.abstracts.CustomSavable;
 import basemod.devcommands.ConsoleCommand;
 import basemod.helpers.RelicType;
@@ -54,11 +55,13 @@ import spireCafe.interactables.patrons.dandadan.RightballPotionPatch;
 import spireCafe.interactables.patrons.missingno.MissingnoUtil;
 import spireCafe.interactables.patrons.powerelic.implementation.debug.DevcommandPowerelic;
 import spireCafe.interactables.patrons.spiomesmanifestation.SpiomesManifestationPatron;
+import spireCafe.patches.CafeEntryExitPatch;
 import spireCafe.patches.PotencySaverPatch;
 import spireCafe.screens.CafeMerchantScreen;
 import spireCafe.screens.JukeboxScreen;
 import spireCafe.screens.CafeMatchAndKeepScreen;
 import spireCafe.ui.Dialog;
+import spireCafe.ui.FixedModLabeledToggleButton.FixedModLabel;
 import spireCafe.ui.FixedModLabeledToggleButton.FixedModLabeledToggleButton;
 import spireCafe.util.TexLoader;
 import spireCafe.util.cutsceneStrings.CutsceneStrings;
@@ -66,6 +69,8 @@ import spireCafe.util.cutsceneStrings.LocalizedCutsceneStrings;
 import spireCafe.util.devcommands.Cafe;
 
 import java.io.IOException;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
@@ -498,12 +503,20 @@ public class Anniv7Mod implements
 
     private static final float ENTRYCOST_CHECKBOX_X = 400f;
     private static final float ENTRYCOST_CHECKBOX_Y = 685f;
+    private static final float ENTRYCOST_SLIDER_X = 400f;
+    private static final float ENTRYCOST_SLIDER_Y = 650f;
+    private static final float ENTRYCOST_SLIDER_X2 = 425f;
+    private static final float ENTRYCOST_SLIDER_Y2 = 615f;
+    private static final float ENTRYCOST_SLIDER_MULTIPLIER = 100f;
     private static final float SHADERS_CHECKBOX_SERIES_X = 400f;
-    private static final float SHADERS_CHECKBOX_Y = 650f;
+    private static final float SHADERS_CHECKBOX_Y = 560f;
     private static final float DROPDOWN_X = 400f;
-    private static final float DROPDOWN_Y = 600f;
-    private static final float CHECKBOX_X = 400f;
-    private static final float CHECKBOX_Y = 520f;
+    private static final float DROPDOWN_Y = 540f;
+    private static final float FILTER_CHECKBOX_X = 400f;
+    private static final float FILTER_CHECKBOX_Y = 450f;
+
+    public static final float ATTRACTION_SETTING_X = 400f;
+    public static final float ATTRACTION_SETTING_Y = 400f;
 
     private FixedModLabeledToggleButton filterCheckbox;
 
@@ -528,9 +541,30 @@ public class Anniv7Mod implements
                 (button) -> setDisableShadersConfig(button.enabled));
         settingsPanel.addUIElement(disableShaders);
 
+        FixedModLabel cafeEntryCostSliderLabel = new FixedModLabel(configStrings.TEXT[6], ENTRYCOST_SLIDER_X, ENTRYCOST_SLIDER_Y, Color.WHITE, FontHelper.tipBodyFont, null, (update) -> {});
+        settingsPanel.addUIElement(cafeEntryCostSliderLabel);
+
+        ModSlider cafeEntryCostSlider = new ModSlider("", ENTRYCOST_SLIDER_X2 * Settings.xScale, ENTRYCOST_SLIDER_Y2 * Settings.yScale, ENTRYCOST_SLIDER_MULTIPLIER, "%", null,
+            (me) -> {
+                int val = Math.round(me.value * me.multiplier);
+                setCafeEntryPercentConfig(val);
+            });
+        settingsPanel.addUIElement(cafeEntryCostSlider);
+        cafeEntryCostSlider.setValue((float)getCafeEntryPercentConfig() / ENTRYCOST_SLIDER_MULTIPLIER);
+            
         ArrayList<String> filterOptions = new ArrayList<>();
         for (String i : unfilteredAllInteractableIDs) {
-            filterOptions.add(i);
+            try {
+                Class<? extends AbstractCafeInteractable> clz = Anniv7Mod.interactableClasses.get(i);
+                AbstractCafeInteractable interactable = clz.getConstructor(float.class, float.class).newInstance(0, 0);
+                logger.info(String.format("interactable = %s", interactable));
+                logger.info(String.format("interactable.name = %s", interactable.name));
+                filterOptions.add(interactable.name);
+            } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                logger.error("Error creating interactable " + i + e);
+                filterOptions.add(i);
+
+            }
         }
 
         filterDropdown = new DropdownMenu((dropdownMenu, index, s) -> filterSetViewedInteractable(index),
@@ -549,7 +583,7 @@ public class Anniv7Mod implements
 
         settingsPanel.addUIElement(wrapperDropdown);
 
-        filterCheckbox = new FixedModLabeledToggleButton(configStrings.TEXT[5], CHECKBOX_X, CHECKBOX_Y, Color.WHITE,
+        filterCheckbox = new FixedModLabeledToggleButton(configStrings.TEXT[5], FILTER_CHECKBOX_X, FILTER_CHECKBOX_Y, Color.WHITE,
             FontHelper.tipBodyFont, true, null, (label) -> {},
             (button) -> setFilterConfig(filterViewedInteractable, button.enabled));
         IUIElement wrapperFilterCheckbox = new IUIElement() {
@@ -621,6 +655,25 @@ public class Anniv7Mod implements
     public static void setCafeEntryCostConfig(boolean bool) {
         if (modConfig != null) {
             modConfig.setBool("cafeEntryCost", bool);
+            try {
+                modConfig.save();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public static int getCafeEntryPercentConfig() {
+        if (modConfig != null && modConfig.has("cafeEntryPercent")) {
+            return modConfig.getInt("cafeEntryPercent");
+        } else {
+            return CafeEntryExitPatch.HP_COST_PERCENT;
+        }
+    }
+    
+    public static void setCafeEntryPercentConfig(int val) {
+        if (modConfig != null) {
+            modConfig.setInt("cafeEntryPercent", val);
             try {
                 modConfig.save();
             } catch (IOException e) {

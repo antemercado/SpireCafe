@@ -2,8 +2,11 @@ package spireCafe.interactables.attractions.punchingbag;
 
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.megacrit.cardcrawl.core.CardCrawlGame;
+import com.megacrit.cardcrawl.localization.UIStrings;
 
 import basemod.IUIElement;
+import spireCafe.Anniv7Mod;
 import spireCafe.abstracts.AbstractAttractionSettings;
 import spireCafe.ui.FixedModLabeledToggleButton.FixedModLabeledButton;
 
@@ -12,10 +15,12 @@ public class PunchingBagSettings extends AbstractAttractionSettings{
     private FixedModLabeledButton resetButton;
     public static boolean isEnabled = false;
 
-    public PunchingBagSettings() {
-        super(PunchingBagAttraction.class);
+    private static final String ID = Anniv7Mod.makeID(PunchingBagSettings.class.getSimpleName());
+    private static final UIStrings uiString = CardCrawlGame.languagePack.getUIString(ID);
 
-        this.resetButton = new FixedModLabeledButton("Reset High Score", 400f, 450f, Color.WHITE, Color.RED, null,
+    public PunchingBagSettings() {
+        super();
+        this.resetButton = new FixedModLabeledButton(uiString.TEXT[0], Anniv7Mod.ATTRACTION_SETTING_X, Anniv7Mod.ATTRACTION_SETTING_Y - 38f, Color.WHITE, Color.RED, null,
             (click) -> {resetHighScore();});
 
         IUIElement wrapper = new IUIElement() {

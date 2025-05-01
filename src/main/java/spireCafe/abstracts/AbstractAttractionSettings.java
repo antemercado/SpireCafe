@@ -6,12 +6,9 @@ import basemod.IUIElement;
 
 public abstract class AbstractAttractionSettings {
 
-    public String attractionID;
-
     protected ArrayList<IUIElement> elements = new ArrayList<>();
 
-    public AbstractAttractionSettings(Class<? extends AbstractCafeInteractable> clz) {
-        this.attractionID = clz.getSimpleName();
+    public AbstractAttractionSettings() {
     }
 
     public ArrayList<IUIElement> getElements(){
