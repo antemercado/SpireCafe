@@ -557,8 +557,6 @@ public class Anniv7Mod implements
             try {
                 Class<? extends AbstractCafeInteractable> clz = Anniv7Mod.interactableClasses.get(i);
                 AbstractCafeInteractable interactable = clz.getConstructor(float.class, float.class).newInstance(0, 0);
-                logger.info(String.format("interactable = %s", interactable));
-                logger.info(String.format("interactable.name = %s", interactable.name));
                 filterOptions.add(interactable.name);
             } catch (InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
                 logger.error("Error creating interactable " + i + e);
