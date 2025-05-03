@@ -1,0 +1,67 @@
+package spireCafe.interactables.merchants.enchanter;
+
+import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.math.MathUtils;
+import com.megacrit.cardcrawl.cards.AbstractCard;
+import com.megacrit.cardcrawl.cards.CardGroup;
+import com.megacrit.cardcrawl.core.Settings;
+import com.megacrit.cardcrawl.dungeons.AbstractDungeon;
+import com.megacrit.cardcrawl.vfx.AbstractGameEffect;
+import com.megacrit.cardcrawl.vfx.cardManip.ShowCardBrieflyEffect;
+
+import basemod.BaseMod;
+import basemod.abstracts.AbstractCardModifier;
+import basemod.helpers.CardModifierManager;
+import spireCafe.screens.CafeMerchantScreen;
+
+public class EnchantCardEffect extends AbstractGameEffect{
+
+    private CardGroup cards;
+    private boolean openedScreen = false;
+    private EnchanterArticle article;
+
+    public EnchantCardEffect(CardGroup cards, EnchanterArticle article) {
+        this.cards = cards;
+        this.article = article;
+        this.duration = 0.0F;
+        
+    }
+    @Override
+    public void update() {
+        if (AbstractDungeon.screen == CafeMerchantScreen.ScreenEnum.CAFE_MERCHANT_SCREEN) {
+            AbstractDungeon.closeCurrentScreen();
+        }
+        if (!this.openedScreen) {
+            this.openedScreen = true;
+            AbstractDungeon.gridSelectScreen.open(cards, 1, "Choose card to enchant:", false);
+        }
+
+        if (!AbstractDungeon.gridSelectScreen.selectedCards.isEmpty()) {
+            for (AbstractCard c : AbstractDungeon.gridSelectScreen.selectedCards) {
+                CardModifierManager.addModifier(c, article.modifier.makeCopy());
+                showChangedCard(c);
+            }
+            AbstractDungeon.gridSelectScreen.selectedCards.clear();
+            article.merchant.articles.remove(article); // article
+            this.duration -= Gdx.graphics.getDeltaTime();
+        }
+        
+        if (this.duration < 0.0F) {
+            this.isDone = true;
+            article.merchant.onInteract();
+        }
+    }
+
+    @Override
+    public void dispose() {}
+
+    @Override
+    public void render(SpriteBatch arg0) {}
+
+    private void showChangedCard(AbstractCard c) {
+        float x = Settings.WIDTH * 0.5F + MathUtils.random.nextFloat() * Settings.WIDTH * 0.75F - Settings.WIDTH * 0.375F;
+        float y = Settings.HEIGHT * 0.5F + MathUtils.random.nextFloat() * Settings.HEIGHT * 0.35F - Settings.HEIGHT * 0.175F;
+        AbstractDungeon.topLevelEffectsQueue.add(new ShowCardBrieflyEffect(c.makeStatEquivalentCopy(), x, y));
+    }
+}

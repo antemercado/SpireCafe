@@ -12,6 +12,7 @@ import org.apache.logging.log4j.Logger;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.MathUtils;
+import com.evacipated.cardcrawl.modthespire.Loader;
 import com.megacrit.cardcrawl.cards.AbstractCard;
 import com.megacrit.cardcrawl.core.CardCrawlGame;
 import com.megacrit.cardcrawl.core.Settings;
@@ -26,6 +27,7 @@ import basemod.abstracts.AbstractCardModifier;
 import basemod.animations.SpriterAnimation;
 import basemod.helpers.CardModifierManager;
 import spireCafe.Anniv7Mod;
+import spireCafe.abstracts.AbstractArticle;
 import spireCafe.abstracts.AbstractMerchant;
 import spireCafe.cardmods.AutoplayMod;
 import spireCafe.cardmods.BlessedMod;
@@ -34,7 +36,15 @@ import spireCafe.interactables.merchants.secretshop.IdentifyArticle;
 import spireCafe.interactables.merchants.secretshop.SecretShopMerchant;
 import spireCafe.util.TexLoader;
 
-public class EnchanterMerchant extends AbstractMerchant{
+public class EnchanterMerchant extends AbstractMerchant {
+
+    private static final float SCALE = 0.75F;
+    private static final float HB_Y = 160.0F / SCALE;
+    private static final float HB_X = 160.0F / SCALE;
+
+    public enum ModifierRarity {
+        COMMON, UNCOMMON, RARE, SPECIAL
+    }
 
     private static final float TOP_ROW_Y = 760.0F * Settings.yScale;
     private static final float BOTTOM_ROW_Y = 337.0F * Settings.yScale;
@@ -43,7 +53,7 @@ public class EnchanterMerchant extends AbstractMerchant{
     private static final String ID = EnchanterMerchant.class.getSimpleName();
     private static final CharacterStrings characterStrings = CardCrawlGame.languagePack.getCharacterString(Anniv7Mod.makeID(ID));
     private static final String[] TEXT = characterStrings.TEXT;
-    private static final Texture RUG_TEXTURE = TexLoader.getTexture(Anniv7Mod.makeMerchantPath("secretshop/rug.png"));
+    private static final Texture RUG_TEXTURE = TexLoader.getTexture(Anniv7Mod.makeMerchantPath("enchanter/rug.png"));
     private static final String MERCHANT_STR = Anniv7Mod.makeMerchantPath("enchanter/idle/");
 
     private static final float PITCH_VAR = 0.8F;
@@ -66,31 +76,48 @@ public class EnchanterMerchant extends AbstractMerchant{
     public static final Logger logger = LogManager.getLogger("EnchanterMerchant");
 
     public EnchanterMerchant(float animationX, float animationY) {
-        super(animationX, animationY, 320.0F, 320.0F);
+        super(animationX - (20f * Settings.xScale), animationY, HB_X, HB_Y);
         this.name = characterStrings.NAMES[0];
         this.authors = "Coda";
         this.background = new TextureRegion(RUG_TEXTURE);
-        loadAnimation(MERCHANT_STR + "skeleton.atlas", MERCHANT_STR + "skeleton.json", 0.75F);
+        loadAnimation(MERCHANT_STR + "skeleton.atlas", MERCHANT_STR + "skeleton.json", SCALE);
         this.state.setAnimation(0, "Sprite", true);
     }
 
     @Override
     protected void rollShop() {
         loadDefaultMods();
-        loadChimeraCards();
-        loadAnniv6ManaSurge();
-        loadAnniv5Modifiers();
+        if (Loader.isModLoaded("CardAugments")) {
+            loadChimeraCardModifiers();
+        }
+        if (Loader.isModLoaded("anniv6")) {
+            loadAnniv6Modifiers();
+        }
+        if (Loader.isModLoaded("anniv5")) {
+            loadAnniv5Modifiers();
+        }
+        if (Loader.isModLoaded("expansionPacks")) {
+            loadAnniv5ExpansionModifiers();
+        }
+
+        Collections.shuffle(commonMods);
+        Collections.shuffle(uncommonMods);
+        articles.add(new EnchanterArticle(this, commonMods.get(0), ModifierRarity.COMMON, "Test", 500, 500));
+        articles.add(new EnchanterArticle(this, uncommonMods.get(0), ModifierRarity.COMMON, "Test", 200, 200));
+    }
+
+    // Enchanter Article will delete itself
+    @Override
+    public void onBuyArticle(AbstractArticle article) {
     }
 
     @Override
     public void onInteract() {
         super.onInteract();
-        Collections.shuffle(commonMods);
-        logger.info(commonMods.get(0));
-        for (AbstractCard c : AbstractDungeon.player.masterDeck.group) {
-            CardModifierManager.addModifier(c, commonMods.get(0));
-            showChangedCard(c);
-        }
+        // for (AbstractCard c : AbstractDungeon.player.masterDeck.group) {
+        //     CardModifierManager.addModifier(c, commonMods.get(0));
+        //     showChangedCard(c);
+        // }
 
         // if (chimeraAbstractAugment.isAssignableFrom(commonMods.get(0).getClass())) {
         //     try {
@@ -111,14 +138,14 @@ public class EnchanterMerchant extends AbstractMerchant{
     }
     
     private void loadDefaultMods() {
-        commonMods.add(null);
+        // commonMods.add(null);
 
-        uncommonMods.add(new BlessedMod());
+        // uncommonMods.add(new BlessedMod());
 
-        rareMods.add(new TransientMod());
-        rareMods.add(new AutoplayMod());
+        // rareMods.add(new TransientMod());
+        // rareMods.add(new AutoplayMod());
     }
-    private void loadChimeraCards() {
+    private void loadChimeraCardModifiers() {
         try {
             chimera = Class.forName("CardAugments.CardAugmentsMod");
             chimeraAbstractAugment = Class.forName("CardAugments.cardmods.AbstractAugment");
@@ -132,14 +159,14 @@ public class EnchanterMerchant extends AbstractMerchant{
             rareMods.addAll(rareChimera);
             specialMods.addAll(specialChimera);
 
-        } catch (Exception e) {
+        } catch (ClassNotFoundException | SecurityException e) {
             e.printStackTrace();
             throw new RuntimeException("Error retrieving card mods from Chimera Cards", e);
         }
     }
 
     @SuppressWarnings("unchecked")
-    private void loadAnniv6ManaSurge() {
+    private void loadAnniv6Modifiers() {
         try {
             manaSurgeZone = Class.forName("spireMapOverhaul.zones.manasurge.ManaSurgeZone");
             Method m = manaSurgeZone.getMethod("getPositiveCommonModifierList", boolean.class);
@@ -153,15 +180,16 @@ public class EnchanterMerchant extends AbstractMerchant{
             logger.info(commonMods);
             logger.info(uncommonMods);
 
-        } catch (Exception e) {
+        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
             throw new RuntimeException("Error retrieving card mods from anniv6", e);
         }
     }
 
     private void loadAnniv5Modifiers() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'loadAnniv5Modifiers'");
+    }
+
+    private void loadAnniv5ExpansionModifiers() {
     }
 
     private void showChangedCard(AbstractCard c) {
