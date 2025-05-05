@@ -3,7 +3,6 @@ package spireCafe.interactables.merchants.enchanter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 
 import org.apache.logging.log4j.LogManager;
@@ -11,7 +10,6 @@ import org.apache.logging.log4j.Logger;
 
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.math.MathUtils;
 import com.evacipated.cardcrawl.modthespire.Loader;
 import com.megacrit.cardcrawl.cards.AbstractCard;
 import com.megacrit.cardcrawl.core.CardCrawlGame;
@@ -19,21 +17,18 @@ import com.megacrit.cardcrawl.core.Settings;
 import com.megacrit.cardcrawl.dungeons.AbstractDungeon;
 import com.megacrit.cardcrawl.localization.CharacterStrings;
 import com.megacrit.cardcrawl.potions.AbstractPotion;
+import com.megacrit.cardcrawl.random.Random;
 import com.megacrit.cardcrawl.relics.AbstractRelic;
-import com.megacrit.cardcrawl.vfx.cardManip.ShowCardBrieflyEffect;
 
 import basemod.ReflectionHacks;
 import basemod.abstracts.AbstractCardModifier;
-import basemod.animations.SpriterAnimation;
-import basemod.helpers.CardModifierManager;
 import spireCafe.Anniv7Mod;
 import spireCafe.abstracts.AbstractArticle;
 import spireCafe.abstracts.AbstractMerchant;
-import spireCafe.cardmods.AutoplayMod;
 import spireCafe.cardmods.BlessedMod;
 import spireCafe.cardmods.TransientMod;
+import spireCafe.interactables.merchants.enchanter.enchantermods.MagneticMod;
 import spireCafe.interactables.merchants.secretshop.IdentifyArticle;
-import spireCafe.interactables.merchants.secretshop.SecretShopMerchant;
 import spireCafe.util.TexLoader;
 
 public class EnchanterMerchant extends AbstractMerchant {
@@ -46,9 +41,11 @@ public class EnchanterMerchant extends AbstractMerchant {
         COMMON, UNCOMMON, RARE, SPECIAL
     }
 
-    private static final float TOP_ROW_Y = 760.0F * Settings.yScale;
-    private static final float BOTTOM_ROW_Y = 337.0F * Settings.yScale;
-    private static final float DRAW_START_X = Settings.WIDTH * 0.16F;
+    private static final float TOP_ROW_Y = 800.0F * Settings.yScale;
+    private static final float BOTTOM_ROW_Y = 330.0F * Settings.yScale;
+    private static final float DRAW_START_X = 400.0F * Settings.xScale;
+    private static final float DRAW_OFFSET_X = 300.0F * Settings.xScale;
+    
     
     private static final String ID = EnchanterMerchant.class.getSimpleName();
     private static final CharacterStrings characterStrings = CardCrawlGame.languagePack.getCharacterString(Anniv7Mod.makeID(ID));
@@ -72,6 +69,7 @@ public class EnchanterMerchant extends AbstractMerchant {
     private Class<?> chimeraAbstractAugment;
 
     private Class<?> manaSurgeZone;
+    private Random miscRng = AbstractDungeon.miscRng;
     
     public static final Logger logger = LogManager.getLogger("EnchanterMerchant");
 
@@ -86,7 +84,9 @@ public class EnchanterMerchant extends AbstractMerchant {
 
     @Override
     protected void rollShop() {
-        loadDefaultMods();
+
+        // loadDefaultMods();
+
         if (Loader.isModLoaded("CardAugments")) {
             loadChimeraCardModifiers();
         }
@@ -100,66 +100,110 @@ public class EnchanterMerchant extends AbstractMerchant {
             loadAnniv5ExpansionModifiers();
         }
 
-        Collections.shuffle(commonMods);
-        Collections.shuffle(uncommonMods);
-        articles.add(new EnchanterArticle(this, commonMods.get(0), ModifierRarity.COMMON, "Test", 500, 500));
-        articles.add(new EnchanterArticle(this, uncommonMods.get(0), ModifierRarity.COMMON, "Test", 200, 200));
+        ;
+
+        for (int i = 0; i < 6; i++) {
+            ModifierRarity rarity;
+            if (i < 3) {
+                rarity = miscRng.randomBoolean(0.5F) ? ModifierRarity.COMMON : ModifierRarity.UNCOMMON;
+            } else {
+                rarity = miscRng.randomBoolean(0.75F) ? ModifierRarity.UNCOMMON : ModifierRarity.RARE;
+            }
+            AbstractCardModifier modifier = getModifierFromRarity(rarity);
+
+            EnchanterArticle articleToAdd;
+
+            //TODO: Remove            
+            try {
+                Class<?> testReflect = Class.forName("thePackmaster.cardmodifiers.rippack.RippableModifier");
+                modifier = (AbstractCardModifier) testReflect.getConstructor().newInstance();
+            } catch (IllegalArgumentException | SecurityException | ClassNotFoundException | InstantiationException | IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
+                e.printStackTrace();
+            }
+
+            if (chimeraAbstractAugment != null && chimeraAbstractAugment.isAssignableFrom(modifier.getClass())) {
+                articleToAdd = new ChimeraEnchanterArticle(this, modifier, rarity);
+            } else {
+                articleToAdd = new EnchanterArticle(this, modifier, rarity);
+            }
+
+            if (i < 3) {
+                articleToAdd.updateXY(DRAW_START_X + ((i % 3) * DRAW_OFFSET_X), TOP_ROW_Y);
+            } else {
+                articleToAdd.updateXY(DRAW_START_X + ((i % 3) * DRAW_OFFSET_X), BOTTOM_ROW_Y);
+            }
+            this.articles.add(articleToAdd);
+        }
     }
 
-    // Enchanter Article will delete itself
+    private AbstractCardModifier getModifierFromRarity(ModifierRarity rarity) {
+        switch (rarity) {
+            case COMMON:
+                Collections.shuffle(commonMods, new java.util.Random(miscRng.random.nextLong()));
+                return commonMods.get(0);
+            case UNCOMMON:
+                Collections.shuffle(uncommonMods, new java.util.Random(miscRng.random.nextLong()));    
+                return uncommonMods.get(0);
+            case RARE:
+                Collections.shuffle(rareMods, new java.util.Random(miscRng.random.nextLong()));    
+                return rareMods.get(0);
+            default:
+                Collections.shuffle(specialMods, new java.util.Random(miscRng.random.nextLong()));
+                return specialMods.get(0);
+        }
+    }
+
+    // EnchantCardEffect will delete the article
     @Override
     public void onBuyArticle(AbstractArticle article) {
-    }
-
-    @Override
-    public void onInteract() {
-        super.onInteract();
-        // for (AbstractCard c : AbstractDungeon.player.masterDeck.group) {
-        //     CardModifierManager.addModifier(c, commonMods.get(0));
-        //     showChangedCard(c);
-        // }
-
-        // if (chimeraAbstractAugment.isAssignableFrom(commonMods.get(0).getClass())) {
-        //     try {
-        //         Method m = commonMods.get(0).getClass().getMethod("canApplyTo", AbstractCard.class);
-        //         for (AbstractCard c : AbstractDungeon.player.masterDeck.group) {
-        //             boolean x = (boolean) m.invoke(commonMods.get(0), c);
-        //             logger.info("(boolean) m.invoke(commonMods.get(0), c): " + x);
-        //             if (x) {
-        //                 CardModifierManager.addModifier(c, commonMods.get(0).makeCopy());
-        //                 showChangedCard(c);
-        //             }
-        //         }
-        //     } catch (NoSuchMethodException | SecurityException | IllegalAccessException | InvocationTargetException e) {
-        //         e.printStackTrace();
-        //     }
-        // }
-
     }
     
     private void loadDefaultMods() {
         // commonMods.add(null);
 
-        // uncommonMods.add(new BlessedMod());
+        uncommonMods.add(new BlessedMod());
+        uncommonMods.add(new BlessedMod());
+        uncommonMods.add(new BlessedMod());
 
-        // rareMods.add(new TransientMod());
+        rareMods.add(new TransientMod());
+        rareMods.add(new TransientMod());
+        rareMods.add(new TransientMod());
         // rareMods.add(new AutoplayMod());
     }
     private void loadChimeraCardModifiers() {
         try {
             chimera = Class.forName("CardAugments.CardAugmentsMod");
             chimeraAbstractAugment = Class.forName("CardAugments.cardmods.AbstractAugment");
-            ArrayList<AbstractCardModifier> commonChimera = new ArrayList<>(ReflectionHacks.getPrivateStatic(chimera, "commonMods"));
-            ArrayList<AbstractCardModifier> uncommonChimera = new ArrayList<>(ReflectionHacks.getPrivateStatic(chimera, "uncommonMods"));
-            ArrayList<AbstractCardModifier> rareChimera = new ArrayList<>(ReflectionHacks.getPrivateStatic(chimera, "rareMods"));
-            ArrayList<AbstractCardModifier> specialChimera = new ArrayList<>(ReflectionHacks.getPrivateStatic(chimera, "specialMods"));
+            ArrayList<AbstractCardModifier> allChimera = new ArrayList<>();
+            allChimera.addAll(ReflectionHacks.getPrivateStatic(chimera, "commonMods"));
+            allChimera.addAll(ReflectionHacks.getPrivateStatic(chimera, "uncommonMods"));
+            allChimera.addAll(ReflectionHacks.getPrivateStatic(chimera, "rareMods"));
+            allChimera.addAll(ReflectionHacks.getPrivateStatic(chimera, "specialMods"));
 
-            commonMods.addAll(commonChimera);
-            uncommonMods.addAll(uncommonChimera);
-            rareMods.addAll(rareChimera);
-            specialMods.addAll(specialChimera);
+            Method m = chimeraAbstractAugment.getMethod("canApplyTo", AbstractCard.class);
+            for (AbstractCardModifier mod: allChimera) {
+                for (AbstractCard c : AbstractDungeon.player.masterDeck.group) {
+                    if ((boolean) m.invoke(mod, c)) {
+                        Method m2 = chimeraAbstractAugment.getMethod("getModRarity");
+                        switch (m2.invoke(mod).toString()){
+                            case "Common":
+                                commonMods.add(mod);
+                                break;
+                            case "Uncommon":
+                                uncommonMods.add(mod);
+                                break;
+                            case "Rare":
+                                rareMods.add(mod);
+                                break;
+                            default:
+                                specialMods.add(mod);
+                        }
+                        break;
+                    }
+                }
+            }
 
-        } catch (ClassNotFoundException | SecurityException e) {
+        } catch (ClassNotFoundException | SecurityException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
             throw new RuntimeException("Error retrieving card mods from Chimera Cards", e);
         }
@@ -177,9 +221,6 @@ public class EnchanterMerchant extends AbstractMerchant {
             commonMods.addAll(commonMana);
             uncommonMods.addAll(uncommonMana);
 
-            logger.info(commonMods);
-            logger.info(uncommonMods);
-
         } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
             throw new RuntimeException("Error retrieving card mods from anniv6", e);
@@ -187,15 +228,25 @@ public class EnchanterMerchant extends AbstractMerchant {
     }
 
     private void loadAnniv5Modifiers() {
+        try {
+            Class<?> rippableModClass = Class.forName("thePackmaster.cardmodifiers.rippack.RippableModifier");
+
+            rareMods.add((AbstractCardModifier) rippableModClass.getConstructor().newInstance());
+        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error retrieving card mods from anniv5", e);
+        }
     }
 
     private void loadAnniv5ExpansionModifiers() {
-    }
-
-    private void showChangedCard(AbstractCard c) {
-        float x = Settings.WIDTH * 0.5F + MathUtils.random.nextFloat() * Settings.WIDTH * 0.75F - Settings.WIDTH * 0.375F;
-        float y = Settings.HEIGHT * 0.5F + MathUtils.random.nextFloat() * Settings.HEIGHT * 0.35F - Settings.HEIGHT * 0.175F;
-        AbstractDungeon.topLevelEffectsQueue.add(new ShowCardBrieflyEffect(c.makeStatEquivalentCopy(), x, y));
+        try {
+            Class<?> magModClass = Class.forName("thePackmaster.cardmodifiers.magnetizepack.MagnetizedModifier");
+            
+            uncommonMods.add((AbstractCardModifier) magModClass.getConstructor(boolean.class).newInstance(true));
+        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | InstantiationException | IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error retrieving card mods from expansionPacks", e);
+        }
     }
     
 }

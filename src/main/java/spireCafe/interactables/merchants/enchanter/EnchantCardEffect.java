@@ -5,18 +5,21 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.math.MathUtils;
 import com.megacrit.cardcrawl.cards.AbstractCard;
 import com.megacrit.cardcrawl.cards.CardGroup;
+import com.megacrit.cardcrawl.core.CardCrawlGame;
 import com.megacrit.cardcrawl.core.Settings;
 import com.megacrit.cardcrawl.dungeons.AbstractDungeon;
+import com.megacrit.cardcrawl.localization.UIStrings;
 import com.megacrit.cardcrawl.vfx.AbstractGameEffect;
 import com.megacrit.cardcrawl.vfx.cardManip.ShowCardBrieflyEffect;
 
-import basemod.BaseMod;
-import basemod.abstracts.AbstractCardModifier;
 import basemod.helpers.CardModifierManager;
+import spireCafe.Anniv7Mod;
 import spireCafe.screens.CafeMerchantScreen;
 
 public class EnchantCardEffect extends AbstractGameEffect{
-
+    
+    public static final UIStrings uiStrings = CardCrawlGame.languagePack.getUIString(Anniv7Mod.makeID(EnchantCardEffect.class.getSimpleName()));
+    
     private CardGroup cards;
     private boolean openedScreen = false;
     private EnchanterArticle article;
@@ -34,7 +37,7 @@ public class EnchantCardEffect extends AbstractGameEffect{
         }
         if (!this.openedScreen) {
             this.openedScreen = true;
-            AbstractDungeon.gridSelectScreen.open(cards, 1, "Choose card to enchant:", false);
+            AbstractDungeon.gridSelectScreen.open(cards, 1, uiStrings.TEXT[0], false);
         }
 
         if (!AbstractDungeon.gridSelectScreen.selectedCards.isEmpty()) {
@@ -43,7 +46,7 @@ public class EnchantCardEffect extends AbstractGameEffect{
                 showChangedCard(c);
             }
             AbstractDungeon.gridSelectScreen.selectedCards.clear();
-            article.merchant.articles.remove(article); // article
+            article.merchant.articles.remove(article); // lmao
             this.duration -= Gdx.graphics.getDeltaTime();
         }
         

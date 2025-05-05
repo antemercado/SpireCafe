@@ -1,0 +1,15 @@
+{
+    "${ModID}:EnchantCardEffect": {
+      "TEXT": [
+        "Choose card to enchant:"
+      ]
+    },
+
+    "${ModID}:MagneticMod": {
+      "TEXT": [
+        "Choose card to enchant:"
+      ]
+    }
+
+
+}
