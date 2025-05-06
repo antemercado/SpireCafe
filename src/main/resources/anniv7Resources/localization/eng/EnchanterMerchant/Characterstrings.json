@@ -4,6 +4,10 @@
         "Enchanting Sisters"
       ],
       "TEXT": [
+      ],
+      "OPTIONS": [
+        "Enchanting Sisters",
+        "Highlight a scroll to see an enchantment you can apply to a card in your deck. Once you purchase the scroll you'll be able to select a valid card in your deck to enchant. Pre-modified cards aren't eligible for enchantment."
       ]
     }
   }

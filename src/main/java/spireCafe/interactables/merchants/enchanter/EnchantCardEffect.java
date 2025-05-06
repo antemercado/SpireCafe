@@ -42,7 +42,7 @@ public class EnchantCardEffect extends AbstractGameEffect{
 
         if (!AbstractDungeon.gridSelectScreen.selectedCards.isEmpty()) {
             for (AbstractCard c : AbstractDungeon.gridSelectScreen.selectedCards) {
-                CardModifierManager.addModifier(c, article.modifier.makeCopy());
+                CardModifierManager.addModifier(c, article.baseModifier.makeCopy());
                 showChangedCard(c);
             }
             AbstractDungeon.gridSelectScreen.selectedCards.clear();

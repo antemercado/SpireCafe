@@ -1,39 +1,22 @@
 package spireCafe.interactables.merchants.enchanter;
 
-import static spireCafe.patches.CafeEntryExitPatch.closeCurrentScreen;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.math.MathUtils;
 import com.megacrit.cardcrawl.cards.AbstractCard;
 import com.megacrit.cardcrawl.cards.CardGroup;
-import com.megacrit.cardcrawl.cards.CardGroup.CardGroupType;
 import com.megacrit.cardcrawl.cards.red.IronWave;
-import com.megacrit.cardcrawl.core.Settings;
 import com.megacrit.cardcrawl.dungeons.AbstractDungeon;
 import com.megacrit.cardcrawl.helpers.FontHelper;
-import com.megacrit.cardcrawl.helpers.Hitbox;
-import com.megacrit.cardcrawl.helpers.PowerTip;
-import com.megacrit.cardcrawl.helpers.TipHelper;
-import com.megacrit.cardcrawl.vfx.cardManip.ShowCardBrieflyEffect;
 
 import basemod.abstracts.AbstractCardModifier;
-import basemod.helpers.CardModifierManager;
-import basemod.helpers.TooltipInfo;
 import spireCafe.Anniv7Mod;
 import spireCafe.abstracts.AbstractArticle;
 import spireCafe.abstracts.AbstractMerchant;
-import spireCafe.cardmods.TransientMod;
-import spireCafe.interactables.merchants.enchanter.EnchanterMerchant.ModifierRarity;
 import spireCafe.util.TexLoader;
-
 
 public class EnchanterArticle extends AbstractArticle {    
     
@@ -49,72 +32,51 @@ public class EnchanterArticle extends AbstractArticle {
 
     protected static AbstractCard tooltipBuddy = new IronWave();
     
-    public AbstractCardModifier modifier;
-    private ModifierRarity rarity;
     private String name;
-
-    private ArrayList<PowerTip> powerTips = new ArrayList<PowerTip>();
-
-    private List<TooltipInfo> tooltipInfo;
-
+    private Enchantments enchantment;
+    private int price;
+    public AbstractCardModifier baseModifier;
     public boolean isPurchased = false;
 
-    public EnchanterArticle(AbstractMerchant merchant, AbstractCardModifier modifier, ModifierRarity rarity) {
-        this(merchant, modifier, rarity, 0, 0);
+
+
+    public EnchanterArticle(AbstractMerchant merchant, Enchantments enchantment) {
+        this(merchant, enchantment, 0, 0);
     }
 
-    public EnchanterArticle(AbstractMerchant merchant, AbstractCardModifier modifier, ModifierRarity rarity, float x, float y) {
-        super(ID, merchant, x, y, TexLoader.getTexture((String.format(TEXTURE_PATH, getScrollNumber(modifier)))));
-        logger.info(String.format(TEXTURE_PATH, getScrollNumber(modifier)));
-        this.modifier = modifier;
-        this.rarity = rarity;
-        this.tooltipInfo = modifier.additionalTooltips(EnchanterArticle.tooltipBuddy);
+    public EnchanterArticle(AbstractMerchant merchant, Enchantments enchantment, float x, float y) {
+        super(ID, merchant, x, y, TexLoader.getTexture((String.format(TEXTURE_PATH, getScrollNumber(enchantment)))));
+        this.enchantment = enchantment;
+        this.baseModifier = enchantment.cardModifier;
         this.name = getTipHeader();
+        this.price = rollInitPrice();
     }
 
-    private static int getScrollNumber(AbstractCardModifier modifier) {
-        return Math.floorMod(modifier.getClass().getName().hashCode(), 12) + 1;
+    private static int getScrollNumber(Enchantments enchantment) {
+        return Math.floorMod(enchantment.cardModifier.getClass().getName().hashCode(), 12) + 1;
     }
 
     @Override
     public String getTipHeader() {
-        if (this.tooltipInfo == null) {
-            return modifier.getClass().getSimpleName();
-        }
-        return tooltipInfo.get(0).title;
+        return enchantment.name;
     }
     
     @Override
     public String getTipBody() {
-        if (this.tooltipInfo == null) {
-            return "";
-        }
-        return tooltipInfo.get(0).description;
+        return enchantment.description;
     }
 
 
     @Override
     public boolean canBuy() {
-        return (AbstractDungeon.player.gold > getModifiedPrice() && getValidEnchantableCards().size() != 0);
+        return (AbstractDungeon.player.gold > getModifiedPrice() && enchantment.getValidCards().size() != 0);
     }
 
     @Override
     public void onBuy() {
-        CardGroup cards = getValidEnchantableCards();
+        CardGroup cards = enchantment.getValidCards();
         AbstractDungeon.player.loseGold(getModifiedPrice());
         AbstractDungeon.topLevelEffectsQueue.add(new EnchantCardEffect(cards, this));
-    }
-
-    protected CardGroup getValidEnchantableCards() {
-        CardGroup cards = new CardGroup(CardGroupType.UNSPECIFIED);
-        for (AbstractCard c : AbstractDungeon.player.masterDeck.group) {
-            if (CardModifierManager.modifiers(c).isEmpty()) {
-                if (modifier.shouldApply(c)) {
-                    cards.addToTop(c);
-                }
-            }
-        }
-        return cards;
     }
 
     @Override
@@ -130,7 +92,22 @@ public class EnchanterArticle extends AbstractArticle {
 
     @Override
     public int getBasePrice() {
-        return 10;
+        return this.price;
+    }
+
+    public int rollInitPrice() {
+        switch (enchantment.rarity) {
+            case COMMON:
+                return AbstractDungeon.merchantRng.random(50, 100);
+            case UNCOMMON:
+                return AbstractDungeon.merchantRng.random(75, 125);
+            case RARE:
+                return AbstractDungeon.merchantRng.random(100, 150);
+            case SPECIAL:
+                return AbstractDungeon.merchantRng.random(125, 175);
+            default:
+                return AbstractDungeon.merchantRng.random(50, 175);
+        }
     }
 
     public void updateXY(float x, float y) {
