@@ -33,18 +33,18 @@ public class EnchanterArticle extends AbstractArticle {
     protected static AbstractCard tooltipBuddy = new IronWave();
     
     private String name;
-    private Enchantments enchantment;
+    private AbstractEnchantment enchantment;
     private int price;
     public AbstractCardModifier baseModifier;
     public boolean isPurchased = false;
 
 
 
-    public EnchanterArticle(AbstractMerchant merchant, Enchantments enchantment) {
+    public EnchanterArticle(AbstractMerchant merchant, AbstractEnchantment enchantment) {
         this(merchant, enchantment, 0, 0);
     }
 
-    public EnchanterArticle(AbstractMerchant merchant, Enchantments enchantment, float x, float y) {
+    public EnchanterArticle(AbstractMerchant merchant, AbstractEnchantment enchantment, float x, float y) {
         super(ID, merchant, x, y, TexLoader.getTexture((String.format(TEXTURE_PATH, getScrollNumber(enchantment)))));
         this.enchantment = enchantment;
         this.baseModifier = enchantment.cardModifier;
@@ -52,18 +52,18 @@ public class EnchanterArticle extends AbstractArticle {
         this.price = rollInitPrice();
     }
 
-    private static int getScrollNumber(Enchantments enchantment) {
+    private static int getScrollNumber(AbstractEnchantment enchantment) {
         return Math.floorMod(enchantment.cardModifier.getClass().getName().hashCode(), 12) + 1;
     }
 
     @Override
     public String getTipHeader() {
-        return enchantment.name;
+        return enchantment.getName();
     }
     
     @Override
     public String getTipBody() {
-        return enchantment.description;
+        return enchantment.getDescription();
     }
 
 

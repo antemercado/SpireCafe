@@ -4,6 +4,7 @@ import static spireCafe.Anniv7Mod.makeID;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 
@@ -34,6 +35,10 @@ import spireCafe.abstracts.AbstractMerchant;
 import spireCafe.cardmods.BlessedMod;
 import spireCafe.cardmods.TransientMod;
 import spireCafe.interactables.merchants.HelpArticle;
+import spireCafe.interactables.merchants.enchanter.enchantments.dynamic.ChimeraEnchantment;
+import spireCafe.interactables.merchants.enchanter.enchantments.dynamic.ManaSurgeEnchantment;
+import spireCafe.interactables.merchants.enchanter.enchantments.rare.TransientEnchantment;
+import spireCafe.interactables.merchants.enchanter.enchantments.uncommon.BlessedEnchantment;
 import spireCafe.interactables.merchants.secretshop.IdentifyArticle;
 import spireCafe.util.TexLoader;
 import spireCafe.util.cutsceneStrings.LocalizedCutsceneStrings;
@@ -73,10 +78,10 @@ public class EnchanterMerchant extends AbstractMerchant {
 
     private static final float PITCH_VAR = 0.8F;
 
-    private ArrayList<Enchantments> commonEnchantments = new ArrayList<>();
-    private ArrayList<Enchantments> uncommonEnchantments = new ArrayList<>();
-    private ArrayList<Enchantments> rareEnchantments = new ArrayList<>();
-    private ArrayList<Enchantments> specialEnchantments = new ArrayList<>();
+    private ArrayList<AbstractEnchantment> commonEnchantments = new ArrayList<>();
+    private ArrayList<AbstractEnchantment> uncommonEnchantments = new ArrayList<>();
+    private ArrayList<AbstractEnchantment> rareEnchantments = new ArrayList<>();
+    private ArrayList<AbstractEnchantment> specialEnchantments = new ArrayList<>();
     private Class<?> chimera;
     private Class<?> chimeraAbstractAugment;
 
@@ -118,7 +123,7 @@ public class EnchanterMerchant extends AbstractMerchant {
             } else {
                 rarity = miscRng.randomBoolean(0.75F) ? ModifierRarity.UNCOMMON : ModifierRarity.RARE;
             }
-            Enchantments enchantment = getEnchantmentFromRarity(rarity);
+            AbstractEnchantment enchantment = getEnchantmentFromRarity(rarity);
 
             EnchanterArticle articleToAdd;
 
@@ -135,25 +140,24 @@ public class EnchanterMerchant extends AbstractMerchant {
         this.articles.add(new HelpArticle(this, HELP_X, HELP_Y, characterStrings.OPTIONS[0], characterStrings.OPTIONS[1]));
     }
 
-    private void addModToEnchantments(AbstractCardModifier mod, ModifierRarity rarity, String name, String description) {
-        Enchantments enchant = new Enchantments(mod, rarity, name, description);
-        switch (rarity) {
+    private void addEnchantmentToList(AbstractEnchantment enchantment) {
+        switch (enchantment.rarity) {
             case COMMON:
-                commonEnchantments.add(enchant);
+                commonEnchantments.add(enchantment);
                 break;
             case UNCOMMON:
-                uncommonEnchantments.add(enchant);
+                uncommonEnchantments.add(enchantment);
                 break;
             case RARE:
-                rareEnchantments.add(enchant);
+                rareEnchantments.add(enchantment);
                 break;
             default:
-                specialEnchantments.add(enchant);
+                specialEnchantments.add(enchantment);
                 break;
         }
     }
 
-    private Enchantments getEnchantmentFromRarity(ModifierRarity rarity) {
+    private AbstractEnchantment getEnchantmentFromRarity(ModifierRarity rarity) {
 
         switch (rarity) {
             case COMMON:
@@ -173,13 +177,8 @@ public class EnchanterMerchant extends AbstractMerchant {
     
     private void loadDefaultMods() {
 
-        String modLabel = makeModLabel(this.getClass());
-
-        addModToEnchantments(new TransientMod(), ModifierRarity.UNCOMMON,
-             BaseMod.getKeywordTitle("anniv7:Blessed"), modLabel + BaseMod.getKeywordDescription("anniv7:Blessed"));
-
-        String[] transientStr = LocalizedCutsceneStrings.getCutsceneStrings(makeID("TheTransientCutscene")).OPTIONS;
-        addModToEnchantments(new TransientMod(), ModifierRarity.RARE, transientStr[2], modLabel + transientStr[3]);
+        addEnchantmentToList(new TransientEnchantment());
+        addEnchantmentToList(new BlessedEnchantment());
         // rareMods.add(new AutoplayMod());
     }
 
@@ -193,24 +192,33 @@ public class EnchanterMerchant extends AbstractMerchant {
             allChimera.addAll(ReflectionHacks.getPrivateStatic(chimera, "rareMods"));
             allChimera.addAll(ReflectionHacks.getPrivateStatic(chimera, "specialMods"));
 
-            Method m = chimeraAbstractAugment.getMethod("canApplyTo", AbstractCard.class);
+            Method m = chimera.getMethod("isAugmentEnabled", chimeraAbstractAugment);
+            Method m2 = chimeraAbstractAugment.getMethod("canApplyTo", AbstractCard.class);
+            Method m3 = chimeraAbstractAugment.getMethod("getModRarity");
+            
             for (AbstractCardModifier mod: allChimera) {
+                if (!(boolean) m.invoke(null, mod)) {
+                    continue;
+                }
                 for (AbstractCard c : AbstractDungeon.player.masterDeck.group) {
-                    if ((boolean) m.invoke(mod, c)) {
-                        Method m2 = chimeraAbstractAugment.getMethod("getModRarity");
-                        switch (m2.invoke(mod).toString()){
+                    if ((boolean) m2.invoke(mod, c)) {
+                        ModifierRarity rarity = ModifierRarity.SPECIAL;
+                        switch (m3.invoke(mod).toString()){
                             case "Common":
-                                commonEnchantments.add(new Enchantments(mod, ModifierRarity.COMMON, getChimeraName(mod), getChimeraDescription(mod), true));
+                                rarity = ModifierRarity.COMMON; 
                                 break;
                             case "Uncommon":
-                                uncommonEnchantments.add(new Enchantments(mod, ModifierRarity.UNCOMMON, getChimeraName(mod), getChimeraDescription(mod), true));
+                                rarity = ModifierRarity.UNCOMMON; 
                                 break;
                             case "Rare":
-                                rareEnchantments.add(new Enchantments(mod, ModifierRarity.RARE, getChimeraName(mod), getChimeraDescription(mod), true));
+                                rarity = ModifierRarity.RARE; 
                                 break;
                             default:
-                                specialEnchantments.add(new Enchantments(mod, ModifierRarity.SPECIAL, getChimeraName(mod), getChimeraDescription(mod), true));
+                                rarity = ModifierRarity.SPECIAL; 
                         }
+
+                        AbstractEnchantment enchant = new ChimeraEnchantment(mod, rarity);
+                        addEnchantmentToList(enchant);
                         break;
                     }
                 }
@@ -222,38 +230,6 @@ public class EnchanterMerchant extends AbstractMerchant {
         }
     }
 
-    private String getChimeraDescription(AbstractCardModifier modifier) {
-        String body = "";
-        try {
-            chimeraAbstractAugment = Class.forName("CardAugments.cardmods.AbstractAugment");
-            Method m = chimeraAbstractAugment.getMethod("getAugmentDescription");
-            body = makeModLabel(modifier.getClass()) + " NL " + m.invoke(modifier);
-        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | IllegalAccessException | InvocationTargetException e) {
-            e.printStackTrace();
-            return body;
-        }
-        if (body.endsWith(" NL ")) {
-            body = body.substring(0, body.length()-4);
-        }
-        return body;
-    }
-
-    private String getChimeraName(AbstractCardModifier modifier) {
-        String header = "";
-        try {
-            chimeraAbstractAugment = Class.forName("CardAugments.cardmods.AbstractAugment");
-            Method m = chimeraAbstractAugment.getMethod("modifyName", String.class, AbstractCard.class);
-            header = ((String) m.invoke(modifier, "", tooltipBuddy)).replace("  ", " ").trim();
-        } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | IllegalAccessException | InvocationTargetException e) {
-            e.printStackTrace();
-        }
-
-        if (header.isEmpty()) {
-            header = modifier.getClass().getSimpleName();
-        }
-        return header;
-    } 
-
     @SuppressWarnings("unchecked")
     private void loadAnniv6Modifiers() {
         try {
@@ -264,28 +240,16 @@ public class EnchanterMerchant extends AbstractMerchant {
             ArrayList<AbstractCardModifier> uncommonMana = new ArrayList<>((ArrayList<AbstractCardModifier>)m2.invoke(null,true));
 
             for (AbstractCardModifier mod : commonMana) {
-                addModToEnchantments(mod, ModifierRarity.COMMON, mod.additionalTooltips(tooltipBuddy).get(0).title,
-                    mod.additionalTooltips(tooltipBuddy).get(0).description);
+                addEnchantmentToList(new ManaSurgeEnchantment(mod, ModifierRarity.COMMON));
             }
             for (AbstractCardModifier mod : uncommonMana) {
-                addModToEnchantments(mod, ModifierRarity.UNCOMMON, mod.additionalTooltips(tooltipBuddy).get(0).title,
-                    mod.additionalTooltips(tooltipBuddy).get(0).description);
+                addEnchantmentToList(new ManaSurgeEnchantment(mod, ModifierRarity.UNCOMMON));
             }
 
         } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
             throw new RuntimeException("Error retrieving card mods from anniv6", e);
         }
-    }
-
-
-    private String makeModLabel(Class<?> clz) {
-        StringBuilder label = new StringBuilder();
-        label.setLength(0);
-        for (String w : WhatMod.findModName(clz).split(" ")){
-            label.append("#p").append(w).append(" ");
-        }
-        return label.toString().trim() + " NL ";
     }
 
     public void enchanterSpeech(String message, EnchantSister which) {
