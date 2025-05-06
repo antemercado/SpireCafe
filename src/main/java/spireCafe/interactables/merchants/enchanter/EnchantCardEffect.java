@@ -8,6 +8,7 @@ import com.megacrit.cardcrawl.cards.CardGroup;
 import com.megacrit.cardcrawl.core.CardCrawlGame;
 import com.megacrit.cardcrawl.core.Settings;
 import com.megacrit.cardcrawl.dungeons.AbstractDungeon;
+import com.megacrit.cardcrawl.dungeons.AbstractDungeon.CurrentScreen;
 import com.megacrit.cardcrawl.localization.UIStrings;
 import com.megacrit.cardcrawl.vfx.AbstractGameEffect;
 import com.megacrit.cardcrawl.vfx.cardManip.ShowCardBrieflyEffect;
@@ -21,23 +22,23 @@ public class EnchantCardEffect extends AbstractGameEffect{
     public static final UIStrings uiStrings = CardCrawlGame.languagePack.getUIString(Anniv7Mod.makeID(EnchantCardEffect.class.getSimpleName()));
     
     private CardGroup cards;
-    private boolean openedScreen = false;
     private EnchanterArticle article;
+    private int cost;
+    private boolean gridScreenOpened = false;
+    // private boolean merchantScreenOpened = false;
 
-    public EnchantCardEffect(CardGroup cards, EnchanterArticle article) {
+
+    public EnchantCardEffect(CardGroup cards, EnchanterArticle article, int cost) {
         this.cards = cards;
         this.article = article;
+        this.cost = cost;
         this.duration = 0.0F;
-        
     }
     @Override
     public void update() {
-        if (AbstractDungeon.screen == CafeMerchantScreen.ScreenEnum.CAFE_MERCHANT_SCREEN) {
-            AbstractDungeon.closeCurrentScreen();
-        }
-        if (!this.openedScreen) {
-            this.openedScreen = true;
-            AbstractDungeon.gridSelectScreen.open(cards, 1, uiStrings.TEXT[0], false);
+        if (!this.gridScreenOpened) {
+            this.gridScreenOpened = true;
+            AbstractDungeon.gridSelectScreen.open(cards, 1, uiStrings.TEXT[0], false, false, true, false);
         }
 
         if (!AbstractDungeon.gridSelectScreen.selectedCards.isEmpty()) {
@@ -47,6 +48,11 @@ public class EnchantCardEffect extends AbstractGameEffect{
             }
             AbstractDungeon.gridSelectScreen.selectedCards.clear();
             article.merchant.articles.remove(article); // lmao
+            AbstractDungeon.player.loseGold(this.cost);
+            this.duration -= Gdx.graphics.getDeltaTime();
+        }
+
+        if (AbstractDungeon.screen == CurrentScreen.NONE){
             this.duration -= Gdx.graphics.getDeltaTime();
         }
         

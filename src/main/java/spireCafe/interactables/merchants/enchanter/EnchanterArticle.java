@@ -75,8 +75,7 @@ public class EnchanterArticle extends AbstractArticle {
     @Override
     public void onBuy() {
         CardGroup cards = enchantment.getValidCards();
-        AbstractDungeon.player.loseGold(getModifiedPrice());
-        AbstractDungeon.topLevelEffectsQueue.add(new EnchantCardEffect(cards, this));
+        AbstractDungeon.topLevelEffectsQueue.add(new EnchantCardEffect(cards, this, getModifiedPrice()));
     }
 
     @Override
