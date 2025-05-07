@@ -5,9 +5,9 @@
       ]
     },
 
-    "${ModID}:MagneticMod": {
+    "${ModID}:RefundMod": {
       "TEXT": [
-        "Choose card to enchant:"
+        "Refund %s NL "
       ]
     }
 

@@ -28,6 +28,7 @@ import com.megacrit.cardcrawl.relics.AbstractRelic;
 import basemod.BaseMod;
 import basemod.ReflectionHacks;
 import basemod.abstracts.AbstractCardModifier;
+import basemod.helpers.CardModifierManager;
 import basemod.patches.whatmod.WhatMod;
 import spireCafe.Anniv7Mod;
 import spireCafe.abstracts.AbstractArticle;
@@ -37,8 +38,11 @@ import spireCafe.cardmods.TransientMod;
 import spireCafe.interactables.merchants.HelpArticle;
 import spireCafe.interactables.merchants.enchanter.enchantments.dynamic.ChimeraEnchantment;
 import spireCafe.interactables.merchants.enchanter.enchantments.dynamic.ManaSurgeEnchantment;
+import spireCafe.interactables.merchants.enchanter.enchantments.rare.RippableEnchantment;
 import spireCafe.interactables.merchants.enchanter.enchantments.rare.TransientEnchantment;
 import spireCafe.interactables.merchants.enchanter.enchantments.uncommon.BlessedEnchantment;
+import spireCafe.interactables.merchants.enchanter.enchantments.uncommon.RefundEnchantment;
+import spireCafe.interactables.merchants.enchanter.enchantments.uncommon.StitchEnchantment;
 import spireCafe.interactables.merchants.secretshop.IdentifyArticle;
 import spireCafe.util.TexLoader;
 import spireCafe.util.cutsceneStrings.LocalizedCutsceneStrings;
@@ -115,7 +119,13 @@ public class EnchanterMerchant extends AbstractMerchant {
         if (Loader.isModLoaded("anniv6")) {
             loadAnniv6Modifiers();
         }
-
+        if (Loader.isModLoaded("anniv5")) {
+            // loadAnniv5Modifiers();
+            if (Loader.isModLoaded("expansionPacks")) {
+                loadExpansionPackModifiers();
+            }
+        }
+        
         for (int i = 0; i < 6; i++) {
             ModifierRarity rarity;
             if (i < 3) {
@@ -141,6 +151,9 @@ public class EnchanterMerchant extends AbstractMerchant {
     }
 
     private void addEnchantmentToList(AbstractEnchantment enchantment) {
+        if (enchantment.getValidCards().isEmpty()) {
+            return;
+        }
         switch (enchantment.rarity) {
             case COMMON:
                 commonEnchantments.add(enchantment);
@@ -159,27 +172,32 @@ public class EnchanterMerchant extends AbstractMerchant {
 
     private AbstractEnchantment getEnchantmentFromRarity(ModifierRarity rarity) {
 
-        switch (rarity) {
-            case COMMON:
-                Collections.shuffle(commonEnchantments, new java.util.Random(miscRng.random.nextLong()));
-                return commonEnchantments.get(0);
-            case UNCOMMON:
-                Collections.shuffle(uncommonEnchantments, new java.util.Random(miscRng.random.nextLong()));    
-                return uncommonEnchantments.get(0);
-            case RARE:
-                Collections.shuffle(rareEnchantments, new java.util.Random(miscRng.random.nextLong()));    
-                return rareEnchantments.get(0);
-            default:
-                Collections.shuffle(specialEnchantments, new java.util.Random(miscRng.random.nextLong()));
-                return specialEnchantments.get(0);
-        }
+        return new RippableEnchantment();
+
+        // switch (rarity) {
+        //     case COMMON:
+        //         Collections.shuffle(commonEnchantments, new java.util.Random(miscRng.random.nextLong()));
+        //         return commonEnchantments.get(0);
+        //     case UNCOMMON:
+        //         Collections.shuffle(uncommonEnchantments, new java.util.Random(miscRng.random.nextLong()));    
+        //         return uncommonEnchantments.get(0);
+        //     case RARE:
+        //         Collections.shuffle(rareEnchantments, new java.util.Random(miscRng.random.nextLong()));    
+        //         return rareEnchantments.get(0);
+        //     default:
+        //         Collections.shuffle(specialEnchantments, new java.util.Random(miscRng.random.nextLong()));
+        //         return specialEnchantments.get(0);
+        // }
     }
     
     private void loadDefaultMods() {
+        // Common
 
-        addEnchantmentToList(new TransientEnchantment());
+        // Uncommon
         addEnchantmentToList(new BlessedEnchantment());
-        // rareMods.add(new AutoplayMod());
+        addEnchantmentToList(new RefundEnchantment());
+        // Rare
+        addEnchantmentToList(new TransientEnchantment());
     }
 
     private void loadChimeraCardModifiers() {
@@ -193,35 +211,28 @@ public class EnchanterMerchant extends AbstractMerchant {
             allChimera.addAll(ReflectionHacks.getPrivateStatic(chimera, "specialMods"));
 
             Method m = chimera.getMethod("isAugmentEnabled", chimeraAbstractAugment);
-            Method m2 = chimeraAbstractAugment.getMethod("canApplyTo", AbstractCard.class);
             Method m3 = chimeraAbstractAugment.getMethod("getModRarity");
             
             for (AbstractCardModifier mod: allChimera) {
                 if (!(boolean) m.invoke(null, mod)) {
                     continue;
                 }
-                for (AbstractCard c : AbstractDungeon.player.masterDeck.group) {
-                    if ((boolean) m2.invoke(mod, c)) {
-                        ModifierRarity rarity = ModifierRarity.SPECIAL;
-                        switch (m3.invoke(mod).toString()){
-                            case "Common":
-                                rarity = ModifierRarity.COMMON; 
-                                break;
-                            case "Uncommon":
-                                rarity = ModifierRarity.UNCOMMON; 
-                                break;
-                            case "Rare":
-                                rarity = ModifierRarity.RARE; 
-                                break;
-                            default:
-                                rarity = ModifierRarity.SPECIAL; 
-                        }
-
-                        AbstractEnchantment enchant = new ChimeraEnchantment(mod, rarity);
-                        addEnchantmentToList(enchant);
+                ModifierRarity rarity = ModifierRarity.SPECIAL;
+                switch (m3.invoke(mod).toString()){
+                    case "Common":
+                        rarity = ModifierRarity.COMMON; 
                         break;
-                    }
+                    case "Uncommon":
+                        rarity = ModifierRarity.UNCOMMON; 
+                        break;
+                    case "Rare":
+                        rarity = ModifierRarity.RARE; 
+                        break;
+                    default:
+                        rarity = ModifierRarity.SPECIAL; 
                 }
+                AbstractEnchantment enchant = new ChimeraEnchantment(mod, rarity);
+                addEnchantmentToList(enchant);
             }
 
         } catch (ClassNotFoundException | SecurityException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
@@ -252,6 +263,16 @@ public class EnchanterMerchant extends AbstractMerchant {
         }
     }
 
+    private void loadAnniv5Modifiers() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'loadAnniv5Modifiers'");
+    }
+
+    private void loadExpansionPackModifiers() {
+        // Uncommon
+        addEnchantmentToList(new StitchEnchantment());
+    }
+
     public void enchanterSpeech(String message, EnchantSister which) {
         float msgX;
         float msgY;
@@ -271,6 +292,9 @@ public class EnchanterMerchant extends AbstractMerchant {
                 break;
         }
 
+    }
 
+    public static boolean canSpawn() {
+        return (AbstractDungeon.player.masterDeck.group.stream().filter(x -> CardModifierManager.modifiers(x).isEmpty()).count() >= 6);
     }
 }
