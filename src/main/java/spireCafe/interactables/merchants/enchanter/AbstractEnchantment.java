@@ -2,7 +2,6 @@ package spireCafe.interactables.merchants.enchanter;
 
 import com.megacrit.cardcrawl.cards.AbstractCard;
 import com.megacrit.cardcrawl.cards.CardGroup;
-import com.megacrit.cardcrawl.cards.AbstractCard.CardRarity;
 import com.megacrit.cardcrawl.cards.AbstractCard.CardType;
 import com.megacrit.cardcrawl.cards.CardGroup.CardGroupType;
 import com.megacrit.cardcrawl.cards.red.IronWave;

@@ -1,45 +1,32 @@
 package spireCafe.interactables.merchants.enchanter;
 
-import static spireCafe.Anniv7Mod.makeID;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.ListIterator;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.badlogic.gdx.assets.loaders.ModelLoader;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.evacipated.cardcrawl.modthespire.Loader;
-import com.megacrit.cardcrawl.cards.AbstractCard;
-import com.megacrit.cardcrawl.cards.red.IronWave;
 import com.megacrit.cardcrawl.core.CardCrawlGame;
 import com.megacrit.cardcrawl.core.Settings;
 import com.megacrit.cardcrawl.dungeons.AbstractDungeon;
 import com.megacrit.cardcrawl.localization.CharacterStrings;
-import com.megacrit.cardcrawl.potions.AbstractPotion;
 import com.megacrit.cardcrawl.random.Random;
-import com.megacrit.cardcrawl.relics.AbstractRelic;
 
-import basemod.BaseMod;
 import basemod.ReflectionHacks;
 import basemod.abstracts.AbstractCardModifier;
 import basemod.cardmods.InnateMod;
 import basemod.helpers.CardModifierManager;
-import basemod.patches.whatmod.WhatMod;
 import spireCafe.Anniv7Mod;
 import spireCafe.abstracts.AbstractArticle;
 import spireCafe.abstracts.AbstractMerchant;
 import spireCafe.cardmods.BlessedMod;
 import spireCafe.cardmods.RetainMod;
-import spireCafe.cardmods.TransientMod;
 import spireCafe.interactables.merchants.HelpArticle;
 import spireCafe.interactables.merchants.enchanter.enchantments.common.MagnetizeEnchantment;
 import spireCafe.interactables.merchants.enchanter.enchantments.common.PersistentEnchantment;
@@ -54,10 +41,7 @@ import spireCafe.interactables.merchants.enchanter.enchantments.uncommon.Noxious
 import spireCafe.interactables.merchants.enchanter.enchantments.uncommon.RefundEnchantment;
 import spireCafe.interactables.merchants.enchanter.modifiers.RipMod;
 import spireCafe.interactables.merchants.enchanter.modifiers.StitchMod;
-import spireCafe.interactables.merchants.secretshop.IdentifyArticle;
 import spireCafe.util.TexLoader;
-import spireCafe.util.cutsceneStrings.LocalizedCutsceneStrings;
-
 public class EnchanterMerchant extends AbstractMerchant {
 
     private static final float SCALE = 0.75F;
