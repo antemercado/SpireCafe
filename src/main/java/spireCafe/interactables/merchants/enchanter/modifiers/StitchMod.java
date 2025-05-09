@@ -6,6 +6,7 @@ import java.lang.reflect.InvocationTargetException;
 import com.megacrit.cardcrawl.actions.AbstractGameAction;
 import com.megacrit.cardcrawl.actions.utility.UseCardAction;
 import com.megacrit.cardcrawl.cards.AbstractCard;
+import com.megacrit.cardcrawl.cards.AbstractCard.CardType;
 import com.megacrit.cardcrawl.core.AbstractCreature;
 
 import basemod.BaseMod;
@@ -13,7 +14,19 @@ import basemod.abstracts.AbstractCardModifier;
 
 public class StitchMod extends AbstractCardModifier{
 
+    private static final String ID = StitchMod.class.getSimpleName();
+    
     private Class<?> stitchAction;
+
+    @Override
+    public String identifier(AbstractCard card) {
+        return ID;
+    }
+
+    @Override
+    public boolean shouldApply(AbstractCard card) {
+        return card.cost != -2 && card.type != CardType.POWER && !card.cardID.matches("anniv5:(Backstitch|Knot|Patchwork|Pincushion)");
+    }
 
     @Override
     public void onUse(AbstractCard card, AbstractCreature target, UseCardAction action) {

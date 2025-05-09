@@ -7,6 +7,9 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.ListIterator;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -28,21 +31,29 @@ import com.megacrit.cardcrawl.relics.AbstractRelic;
 import basemod.BaseMod;
 import basemod.ReflectionHacks;
 import basemod.abstracts.AbstractCardModifier;
+import basemod.cardmods.InnateMod;
 import basemod.helpers.CardModifierManager;
 import basemod.patches.whatmod.WhatMod;
 import spireCafe.Anniv7Mod;
 import spireCafe.abstracts.AbstractArticle;
 import spireCafe.abstracts.AbstractMerchant;
 import spireCafe.cardmods.BlessedMod;
+import spireCafe.cardmods.RetainMod;
 import spireCafe.cardmods.TransientMod;
 import spireCafe.interactables.merchants.HelpArticle;
+import spireCafe.interactables.merchants.enchanter.enchantments.common.MagnetizeEnchantment;
+import spireCafe.interactables.merchants.enchanter.enchantments.common.PersistentEnchantment;
+import spireCafe.interactables.merchants.enchanter.enchantments.common.ReshuffleEnchantment;
 import spireCafe.interactables.merchants.enchanter.enchantments.dynamic.ChimeraEnchantment;
+import spireCafe.interactables.merchants.enchanter.enchantments.dynamic.KeywordEnchantment;
 import spireCafe.interactables.merchants.enchanter.enchantments.dynamic.ManaSurgeEnchantment;
-import spireCafe.interactables.merchants.enchanter.enchantments.rare.RippableEnchantment;
+import spireCafe.interactables.merchants.enchanter.enchantments.rare.AutoplayEnchantment;
 import spireCafe.interactables.merchants.enchanter.enchantments.rare.TransientEnchantment;
-import spireCafe.interactables.merchants.enchanter.enchantments.uncommon.BlessedEnchantment;
+import spireCafe.interactables.merchants.enchanter.enchantments.uncommon.LootEnchantment;
+import spireCafe.interactables.merchants.enchanter.enchantments.uncommon.NoxiousEnchantment;
 import spireCafe.interactables.merchants.enchanter.enchantments.uncommon.RefundEnchantment;
-import spireCafe.interactables.merchants.enchanter.enchantments.uncommon.StitchEnchantment;
+import spireCafe.interactables.merchants.enchanter.modifiers.RipMod;
+import spireCafe.interactables.merchants.enchanter.modifiers.StitchMod;
 import spireCafe.interactables.merchants.secretshop.IdentifyArticle;
 import spireCafe.util.TexLoader;
 import spireCafe.util.cutsceneStrings.LocalizedCutsceneStrings;
@@ -53,8 +64,8 @@ public class EnchanterMerchant extends AbstractMerchant {
     private static final float HB_Y = 160.0F / SCALE;
     private static final float HB_X = 160.0F / SCALE;
 
-    public enum ModifierRarity {
-        COMMON, UNCOMMON, RARE, SPECIAL
+    public enum EnchantmentRarity {
+        COMMON, UNCOMMON, RARE
     }
 
     public enum EnchantSister {
@@ -85,13 +96,14 @@ public class EnchanterMerchant extends AbstractMerchant {
     private ArrayList<AbstractEnchantment> commonEnchantments = new ArrayList<>();
     private ArrayList<AbstractEnchantment> uncommonEnchantments = new ArrayList<>();
     private ArrayList<AbstractEnchantment> rareEnchantments = new ArrayList<>();
-    private ArrayList<AbstractEnchantment> specialEnchantments = new ArrayList<>();
+
     private Class<?> chimera;
     private Class<?> chimeraAbstractAugment;
 
     private Class<?> manaSurgeZone;
-    private Random miscRng = AbstractDungeon.miscRng;
-    private AbstractCard tooltipBuddy = new IronWave();
+    private Random enchanterRng = new Random(AbstractDungeon.miscRng.randomLong());
+    private ArrayList<AbstractCardModifier> allChimera = new ArrayList<>();
+    private HashMap<String,AbstractCardModifier> chimeraMap = new HashMap<>();
     
     public static final Logger logger = LogManager.getLogger("EnchanterMerchant");
     
@@ -108,11 +120,7 @@ public class EnchanterMerchant extends AbstractMerchant {
     @Override
     public void onBuyArticle(AbstractArticle article) {}
 
-    @Override
-    protected void rollShop() {
-
-        loadDefaultMods();
-
+    private void initializeEnchantments() {
         if (Loader.isModLoaded("CardAugments")) {
             loadChimeraCardModifiers();
         }
@@ -120,18 +128,50 @@ public class EnchanterMerchant extends AbstractMerchant {
             loadAnniv6Modifiers();
         }
         if (Loader.isModLoaded("anniv5")) {
-            // loadAnniv5Modifiers();
+            loadAnniv5Modifiers();
             if (Loader.isModLoaded("expansionPacks")) {
                 loadExpansionPackModifiers();
             }
         }
+        loadDefaultModifiers();
+        loadBackupModifiers();
+
+        logger.info(commonEnchantments);
+        logger.info(uncommonEnchantments);
+        logger.info(rareEnchantments);
+
+        // It's possible, but rare, that the enchantment lists can be empty because no enchantments
+        // are valid for the cards in the player's deck. To prevent crashing we just load a basic
+        // set of enchantments in this case. Maybe they'll aquire a valid card from other interactables!
+        if (commonEnchantments.isEmpty()){
+            commonEnchantments.add(new PersistentEnchantment());
+            commonEnchantments.add(new ReshuffleEnchantment());
+        }
+        if (uncommonEnchantments.isEmpty()){
+            uncommonEnchantments.add(new RefundEnchantment());
+            uncommonEnchantments.add(new RefundEnchantment());
+        }
+        if (rareEnchantments.isEmpty()){
+            rareEnchantments.add(new TransientEnchantment());
+            rareEnchantments.add(new AutoplayEnchantment());
+        }
+    }
+
+    @Override
+    protected void rollShop() {
         
+        initializeEnchantments();
+
         for (int i = 0; i < 6; i++) {
-            ModifierRarity rarity;
-            if (i < 3) {
-                rarity = miscRng.randomBoolean(0.5F) ? ModifierRarity.COMMON : ModifierRarity.UNCOMMON;
+            EnchantmentRarity rarity;
+            if (i == 0) {
+                rarity = EnchantmentRarity.COMMON;
+            } else if (0 < i  && i < 3) {
+                rarity = enchanterRng.randomBoolean(0.5F) ? EnchantmentRarity.COMMON : EnchantmentRarity.UNCOMMON;
+            } else if (3 < i && i < 5) {
+                rarity = enchanterRng.randomBoolean(0.75F) ? EnchantmentRarity.UNCOMMON : EnchantmentRarity.RARE;
             } else {
-                rarity = miscRng.randomBoolean(0.75F) ? ModifierRarity.UNCOMMON : ModifierRarity.RARE;
+                rarity = EnchantmentRarity.RARE;
             }
             AbstractEnchantment enchantment = getEnchantmentFromRarity(rarity);
 
@@ -164,72 +204,124 @@ public class EnchanterMerchant extends AbstractMerchant {
             case RARE:
                 rareEnchantments.add(enchantment);
                 break;
-            default:
-                specialEnchantments.add(enchantment);
-                break;
         }
     }
 
-    private AbstractEnchantment getEnchantmentFromRarity(ModifierRarity rarity) {
+    private AbstractEnchantment getEnchantmentFromRarity(EnchantmentRarity rarity) {
 
-        return new RippableEnchantment();
+        // return new MagnetizeEnchantment();
 
-        // switch (rarity) {
-        //     case COMMON:
-        //         Collections.shuffle(commonEnchantments, new java.util.Random(miscRng.random.nextLong()));
-        //         return commonEnchantments.get(0);
-        //     case UNCOMMON:
-        //         Collections.shuffle(uncommonEnchantments, new java.util.Random(miscRng.random.nextLong()));    
-        //         return uncommonEnchantments.get(0);
-        //     case RARE:
-        //         Collections.shuffle(rareEnchantments, new java.util.Random(miscRng.random.nextLong()));    
-        //         return rareEnchantments.get(0);
-        //     default:
-        //         Collections.shuffle(specialEnchantments, new java.util.Random(miscRng.random.nextLong()));
-        //         return specialEnchantments.get(0);
-        // }
+        switch (rarity) {
+            default:
+                Collections.shuffle(commonEnchantments, new java.util.Random(enchanterRng.random.nextLong()));
+                return commonEnchantments.get(0);
+            case UNCOMMON:
+                Collections.shuffle(uncommonEnchantments, new java.util.Random(enchanterRng.random.nextLong()));
+                return uncommonEnchantments.get(0);
+            case RARE:
+                Collections.shuffle(rareEnchantments, new java.util.Random(enchanterRng.random.nextLong()));
+                return rareEnchantments.get(0);
+        }
     }
     
-    private void loadDefaultMods() {
+    private void loadDefaultModifiers() {
         // Common
+        addEnchantmentToList(new PersistentEnchantment());
 
         // Uncommon
-        addEnchantmentToList(new BlessedEnchantment());
+        addEnchantmentToList(new KeywordEnchantment(new BlessedMod(), EnchantmentRarity.UNCOMMON, "anniv7:Blessed"));
         addEnchantmentToList(new RefundEnchantment());
         // Rare
         addEnchantmentToList(new TransientEnchantment());
+    }
+
+    private void loadBackupModifiers() {
+        // These enchantments are duplicates of modifiers you'd find in Chimera Cards.
+        // As such, we're only loading them if the mod and/or modifier isnt't enabled.
+        // This makes sure we have the basic effects we would expect to see without duplicates.
+
+        // Common
+        if (!chimeraModEnabled("CardAugments.cardmods.common.BootMod")) {
+            addEnchantmentToList(new KeywordEnchantment(new InnateMod(), EnchantmentRarity.COMMON, "innate")); // Boot
+        }
+        
+        if (!chimeraModEnabled("CardAugments.cardmods.common.StickyMod")) {
+            addEnchantmentToList(new KeywordEnchantment(new RetainMod(), EnchantmentRarity.COMMON, "retain")); // Sticky
+        }
+
+        if (!chimeraModEnabled("CardAugments.cardmods.common.ReshuffleMod")) {
+            addEnchantmentToList(new ReshuffleEnchantment()); // Reshuffle
+        }
+
+        // Uncommon
+        if (!chimeraModEnabled("CardAugments.cardmods.uncommon.PreparedMod")) {
+            addEnchantmentToList(new LootEnchantment()); // Prepared
+        }
+        
+        if (!chimeraModEnabled("CardAugments.cardmods.uncommon.NoxiousMod")) {
+            addEnchantmentToList(new NoxiousEnchantment()); // Noxious
+        }
+        
+        // // Rare
+        if (!chimeraModEnabled("CardAugments.cardmods.event.AutoMod")) {
+            addEnchantmentToList(new AutoplayEnchantment()); // Auto
+        }
+    }
+
+    private boolean chimeraModEnabled(AbstractCardModifier mod) {
+        if (!Loader.isModLoaded("CardAugments") || chimeraMap.isEmpty()) {
+            return false;
+        }
+        return chimeraModEnabled(mod.getClass().getName());   
+    }
+
+    private boolean chimeraModEnabled(String string) {
+        if (!Loader.isModLoaded("CardAugments") || chimeraMap.isEmpty()) {
+            return false;
+        }
+        if (chimeraMap.keySet().contains(string)) {
+            try {
+                chimera = Class.forName("CardAugments.CardAugmentsMod");
+                chimeraAbstractAugment = Class.forName("CardAugments.cardmods.AbstractAugment");
+                Method m = chimera.getMethod("isAugmentEnabled", chimeraAbstractAugment);
+                return (boolean) m.invoke(null, chimeraMap.get(string));
+            } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | IllegalAccessException | InvocationTargetException e) {
+                e.printStackTrace();
+                return false;
+            }
+        }
+        return false;
     }
 
     private void loadChimeraCardModifiers() {
         try {
             chimera = Class.forName("CardAugments.CardAugmentsMod");
             chimeraAbstractAugment = Class.forName("CardAugments.cardmods.AbstractAugment");
-            ArrayList<AbstractCardModifier> allChimera = new ArrayList<>();
             allChimera.addAll(ReflectionHacks.getPrivateStatic(chimera, "commonMods"));
             allChimera.addAll(ReflectionHacks.getPrivateStatic(chimera, "uncommonMods"));
             allChimera.addAll(ReflectionHacks.getPrivateStatic(chimera, "rareMods"));
             allChimera.addAll(ReflectionHacks.getPrivateStatic(chimera, "specialMods"));
+            allChimera.forEach((mod) -> chimeraMap.put(mod.getClass().getName(), mod));
 
-            Method m = chimera.getMethod("isAugmentEnabled", chimeraAbstractAugment);
-            Method m3 = chimeraAbstractAugment.getMethod("getModRarity");
+            Method m = chimeraAbstractAugment.getMethod("getModRarity");
             
             for (AbstractCardModifier mod: allChimera) {
-                if (!(boolean) m.invoke(null, mod)) {
+                if (!chimeraModEnabled(mod)) {
                     continue;
                 }
-                ModifierRarity rarity = ModifierRarity.SPECIAL;
-                switch (m3.invoke(mod).toString()){
+                EnchantmentRarity rarity;
+                switch (m.invoke(mod).toString()){
                     case "Common":
-                        rarity = ModifierRarity.COMMON; 
+                        rarity = EnchantmentRarity.COMMON; 
                         break;
                     case "Uncommon":
-                        rarity = ModifierRarity.UNCOMMON; 
+                        rarity = EnchantmentRarity.UNCOMMON; 
                         break;
                     case "Rare":
-                        rarity = ModifierRarity.RARE; 
+                        rarity = EnchantmentRarity.RARE; 
                         break;
                     default:
-                        rarity = ModifierRarity.SPECIAL; 
+                        rarity = EnchantmentRarity.RARE; 
                 }
                 AbstractEnchantment enchant = new ChimeraEnchantment(mod, rarity);
                 addEnchantmentToList(enchant);
@@ -251,10 +343,10 @@ public class EnchanterMerchant extends AbstractMerchant {
             ArrayList<AbstractCardModifier> uncommonMana = new ArrayList<>((ArrayList<AbstractCardModifier>)m2.invoke(null,true));
 
             for (AbstractCardModifier mod : commonMana) {
-                addEnchantmentToList(new ManaSurgeEnchantment(mod, ModifierRarity.COMMON));
+                addEnchantmentToList(new ManaSurgeEnchantment(mod, EnchantmentRarity.COMMON));
             }
             for (AbstractCardModifier mod : uncommonMana) {
-                addEnchantmentToList(new ManaSurgeEnchantment(mod, ModifierRarity.UNCOMMON));
+                addEnchantmentToList(new ManaSurgeEnchantment(mod, EnchantmentRarity.UNCOMMON));
             }
 
         } catch (ClassNotFoundException | NoSuchMethodException | SecurityException | IllegalAccessException | InvocationTargetException e) {
@@ -264,13 +356,15 @@ public class EnchanterMerchant extends AbstractMerchant {
     }
 
     private void loadAnniv5Modifiers() {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'loadAnniv5Modifiers'");
+        //Rare
+        addEnchantmentToList(new KeywordEnchantment(new RipMod(), EnchantmentRarity.RARE, "anniv5:rippable"));
     }
 
     private void loadExpansionPackModifiers() {
+        // Common
+        addEnchantmentToList(new MagnetizeEnchantment());
         // Uncommon
-        addEnchantmentToList(new StitchEnchantment());
+        addEnchantmentToList(new KeywordEnchantment(new StitchMod(), EnchantmentRarity.UNCOMMON, "anniv5:stitch"));
     }
 
     public void enchanterSpeech(String message, EnchantSister which) {
@@ -295,6 +389,6 @@ public class EnchanterMerchant extends AbstractMerchant {
     }
 
     public static boolean canSpawn() {
-        return (AbstractDungeon.player.masterDeck.group.stream().filter(x -> CardModifierManager.modifiers(x).isEmpty()).count() >= 6);
+        return (AbstractDungeon.player.masterDeck.group.stream().filter(c -> CardModifierManager.modifiers(c).isEmpty()).anyMatch(c -> c.cost != -2));
     }
 }

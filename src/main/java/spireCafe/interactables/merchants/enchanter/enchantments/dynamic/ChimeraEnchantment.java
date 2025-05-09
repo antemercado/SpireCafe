@@ -9,13 +9,13 @@ import com.megacrit.cardcrawl.cards.CardGroup.CardGroupType;
 
 import basemod.abstracts.AbstractCardModifier;
 import spireCafe.interactables.merchants.enchanter.AbstractEnchantment;
-import spireCafe.interactables.merchants.enchanter.EnchanterMerchant.ModifierRarity;
+import spireCafe.interactables.merchants.enchanter.EnchanterMerchant.EnchantmentRarity;
 
 public class ChimeraEnchantment extends AbstractEnchantment{
 
     private Class<?> chimeraAbstractAugment;
 
-    public ChimeraEnchantment(AbstractCardModifier cardModifier, ModifierRarity rarity) {
+    public ChimeraEnchantment(AbstractCardModifier cardModifier, EnchantmentRarity rarity) {
         super(cardModifier, rarity);
     }
 
@@ -73,4 +73,8 @@ public class ChimeraEnchantment extends AbstractEnchantment{
         return body;
     }
     
+    @Override
+    public String toString() {
+        return super.toString() + ": " + this.cardModifier;
+    }
 }

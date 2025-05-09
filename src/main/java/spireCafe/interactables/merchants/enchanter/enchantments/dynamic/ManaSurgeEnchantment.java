@@ -2,11 +2,11 @@ package spireCafe.interactables.merchants.enchanter.enchantments.dynamic;
 
 import basemod.abstracts.AbstractCardModifier;
 import spireCafe.interactables.merchants.enchanter.AbstractEnchantment;
-import spireCafe.interactables.merchants.enchanter.EnchanterMerchant.ModifierRarity;
+import spireCafe.interactables.merchants.enchanter.EnchanterMerchant.EnchantmentRarity;
 
 public class ManaSurgeEnchantment extends AbstractEnchantment{
 
-    public ManaSurgeEnchantment(AbstractCardModifier cardModifier, ModifierRarity rarity) {
+    public ManaSurgeEnchantment(AbstractCardModifier cardModifier, EnchantmentRarity rarity) {
         super(cardModifier, rarity);
     }
 

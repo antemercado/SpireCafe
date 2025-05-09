@@ -102,8 +102,6 @@ public class EnchanterArticle extends AbstractArticle {
                 return AbstractDungeon.merchantRng.random(75, 125);
             case RARE:
                 return AbstractDungeon.merchantRng.random(100, 150);
-            case SPECIAL:
-                return AbstractDungeon.merchantRng.random(125, 175);
             default:
                 return AbstractDungeon.merchantRng.random(50, 175);
         }
